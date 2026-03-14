@@ -197,6 +197,14 @@ sl account status
 | `sl export aliases` | Export aliases as CSV |
 | `sl export aliases --output <file>` | Export to file |
 
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `SIMPLELOGIN_API_KEY` | API key (highest priority) |
+| `SL_API_KEY` | API key (alternative) |
+| `NO_COLOR` | Set to any value to disable colored output |
+
 ## Output Formats
 
 ### Default (table)

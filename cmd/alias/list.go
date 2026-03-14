@@ -35,7 +35,7 @@ machine-readable output or --jq to filter the JSON response.`,
   # List as JSON and filter with jq
   sl alias list --all --json --jq '.aliases[] | .email'
 
-  # List page 2
+  # List page 2 (1-indexed)
   sl alias list --page 2`,
 	RunE: runList,
 }
@@ -56,7 +56,7 @@ func init() {
 	listCmd.Flags().BoolVar(&listDisabled, "disabled", false, "Show only disabled aliases")
 	listCmd.Flags().BoolVar(&listPinned, "pinned", false, "Show only pinned aliases")
 	listCmd.Flags().StringVar(&listQuery, "query", "", "Search query to filter aliases")
-	listCmd.Flags().IntVar(&listPage, "page", 0, "Page number (0-indexed)")
+	listCmd.Flags().IntVar(&listPage, "page", 1, "Page number (1-indexed)")
 	listCmd.Flags().BoolVar(&listAll, "all", false, "Fetch all pages")
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
 	listCmd.Flags().StringVar(&listJQ, "jq", "", "Apply jq expression to JSON output")
@@ -91,7 +91,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	aliases, rawJSON, err := client.ListAliases(listPage, listPinned, listDisabled, listEnabled, listQuery)
+	aliases, rawJSON, err := client.ListAliases(listPage-1, listPinned, listDisabled, listEnabled, listQuery)
 	if err != nil {
 		output.PrintError("%v", err)
 		return err

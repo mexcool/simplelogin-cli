@@ -82,7 +82,10 @@ func SaveAPIKey(key string) error {
 	viper.Set("api_key", key)
 	// Remove op_ref if setting direct key
 	viper.Set("op_ref", "")
-	return viper.WriteConfigAs(ConfigPath())
+	if err := viper.WriteConfigAs(ConfigPath()); err != nil {
+		return err
+	}
+	return os.Chmod(ConfigPath(), 0600)
 }
 
 // SaveOPRef stores the 1Password reference in the config file.
@@ -96,7 +99,10 @@ func SaveOPRef(vault, item string) error {
 	viper.Set("op_ref", ref)
 	// Remove direct api_key if setting 1Password ref
 	viper.Set("api_key", "")
-	return viper.WriteConfigAs(ConfigPath())
+	if err := viper.WriteConfigAs(ConfigPath()); err != nil {
+		return err
+	}
+	return os.Chmod(ConfigPath(), 0600)
 }
 
 // ClearConfig removes the API key and op_ref from the config file.
@@ -107,7 +113,10 @@ func ClearConfig() error {
 	if _, err := os.Stat(ConfigPath()); os.IsNotExist(err) {
 		return nil
 	}
-	return viper.WriteConfigAs(ConfigPath())
+	if err := viper.WriteConfigAs(ConfigPath()); err != nil {
+		return err
+	}
+	return os.Chmod(ConfigPath(), 0600)
 }
 
 // MaskKey masks an API key for display, showing only the first 4 and last 4 characters.

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/mexcool/simplelogin-cli/cmd/account"
 	"github.com/mexcool/simplelogin-cli/cmd/alias"
 	cmdauth "github.com/mexcool/simplelogin-cli/cmd/auth"
@@ -48,6 +50,34 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
+var completionCmd = &cobra.Command{
+	Use:       "completion [bash|zsh|fish|powershell]",
+	Short:     "Generate shell completion scripts",
+	ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
+	Args:      cobra.ExactValidArgs(1),
+	Example: `  # Bash (add to ~/.bashrc)
+  source <(sl completion bash)
+
+  # Zsh (add to ~/.zshrc)
+  source <(sl completion zsh)
+
+  # Fish
+  sl completion fish | source`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		switch args[0] {
+		case "bash":
+			return rootCmd.GenBashCompletion(os.Stdout)
+		case "zsh":
+			return rootCmd.GenZshCompletion(os.Stdout)
+		case "fish":
+			return rootCmd.GenFishCompletion(os.Stdout, true)
+		case "powershell":
+			return rootCmd.GenPowerShellCompletionWithDesc(os.Stdout)
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(cmdauth.Cmd)
 	rootCmd.AddCommand(alias.Cmd)
@@ -57,4 +87,5 @@ func init() {
 	rootCmd.AddCommand(setting.Cmd)
 	rootCmd.AddCommand(account.Cmd)
 	rootCmd.AddCommand(export.Cmd)
+	rootCmd.AddCommand(completionCmd)
 }

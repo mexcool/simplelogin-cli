@@ -44,7 +44,7 @@ var (
 )
 
 func init() {
-	activityCmd.Flags().IntVar(&activityPage, "page", 0, "Page number (0-indexed)")
+	activityCmd.Flags().IntVar(&activityPage, "page", 1, "Page number (1-indexed)")
 	activityCmd.Flags().BoolVar(&activityAll, "all", false, "Fetch all pages")
 	activityCmd.Flags().BoolVar(&activityJSON, "json", false, "Output as JSON")
 	activityCmd.Flags().StringVar(&activityJQ, "jq", "", "Apply jq expression to JSON output")
@@ -83,7 +83,7 @@ func runActivity(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	activities, rawJSON, err := client.GetAliasActivities(id, activityPage)
+	activities, rawJSON, err := client.GetAliasActivities(id, activityPage-1)
 	if err != nil {
 		output.PrintError("%v", err)
 		return err

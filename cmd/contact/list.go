@@ -43,7 +43,7 @@ var (
 )
 
 func init() {
-	listCmd.Flags().IntVar(&listPage, "page", 0, "Page number (0-indexed)")
+	listCmd.Flags().IntVar(&listPage, "page", 1, "Page number (1-indexed)")
 	listCmd.Flags().BoolVar(&listAll, "all", false, "Fetch all pages")
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
 	listCmd.Flags().StringVar(&listJQ, "jq", "", "Apply jq expression to JSON output")
@@ -82,7 +82,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	contacts, rawJSON, err := client.GetAliasContacts(aliasID, listPage)
+	contacts, rawJSON, err := client.GetAliasContacts(aliasID, listPage-1)
 	if err != nil {
 		output.PrintError("%v", err)
 		return err

@@ -53,7 +53,7 @@ var (
 )
 
 func init() {
-	loginCmd.Flags().StringVar(&loginKey, "key", "", "API key to store")
+	loginCmd.Flags().StringVar(&loginKey, "key", "", "API key to store (note: value will appear in shell history and ps output; prefer interactive or --1password)")
 	loginCmd.Flags().BoolVar(&login1Password, "1password", false, "Use 1Password integration")
 	loginCmd.Flags().StringVar(&loginVault, "vault", "", "1Password vault name")
 	loginCmd.Flags().StringVar(&loginItem, "item", "", "1Password item name")
