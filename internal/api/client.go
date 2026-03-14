@@ -303,7 +303,7 @@ func (c *Client) UpdateAlias(id int, req *UpdateAliasRequest) error {
 // AliasOptions represents the options for creating a custom alias.
 type AliasOptions struct {
 	CanCreate  bool     `json:"can_create"`
-	Prefixes   []string `json:"prefix_suggestion"`
+	Prefixes   string   `json:"prefix_suggestion"`
 	Suffixes   []SuffixOption `json:"suffixes"`
 }
 
