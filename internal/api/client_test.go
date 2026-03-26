@@ -399,26 +399,27 @@ func TestClient_ListMailboxes(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// containsString helper
+// isConnectionRefused helper
 // ---------------------------------------------------------------------------
 
-func TestContainsString(t *testing.T) {
+func TestIsConnectionRefused(t *testing.T) {
 	tests := []struct {
-		s, substr string
-		want      bool
+		name string
+		err  error
+		want bool
 	}{
-		{"connection refused", "connection refused", true},
-		{"dial tcp: connection refused", "connection refused", true},
-		{"timeout", "connection refused", false},
-		{"", "x", false},
-		{"x", "", true},
-		{"", "", true},
+		{"nil error", nil, false},
+		{"exact match", fmt.Errorf("connection refused"), true},
+		{"substring match", fmt.Errorf("dial tcp: connection refused"), true},
+		{"no match", fmt.Errorf("timeout"), false},
 	}
 	for _, tt := range tests {
-		got := containsString(tt.s, tt.substr)
-		if got != tt.want {
-			t.Errorf("containsString(%q, %q) = %v, want %v", tt.s, tt.substr, got, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			got := isConnectionRefused(tt.err)
+			if got != tt.want {
+				t.Errorf("isConnectionRefused(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
 	}
 }
 
