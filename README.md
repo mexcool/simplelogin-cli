@@ -4,6 +4,23 @@ A command-line interface for the [SimpleLogin](https://simplelogin.io) email ali
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap mexcool/tap
+brew install sl
+```
+
+### Go install
+
+```bash
+go install github.com/mexcool/simplelogin-cli/cmd/sl@latest
+```
+
+### GitHub Releases
+
+Download pre-built binaries for your platform from the [Releases](https://github.com/mexcool/simplelogin-cli/releases) page.
+
 ### From source
 
 ```bash
@@ -11,19 +28,6 @@ git clone https://github.com/mexcool/simplelogin-cli.git
 cd simplelogin-cli
 make build
 # Binary is at ./bin/sl
-```
-
-### Go install
-
-```bash
-go install github.com/mexcool/simplelogin-cli@latest
-```
-
-### System-wide
-
-```bash
-make install
-# Copies bin/sl to /usr/local/bin/sl
 ```
 
 ## Authentication

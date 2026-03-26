@@ -1,7 +1,7 @@
 VERSION ?= dev
 
 build:
-	go build -ldflags="-s -w -X main.version=$(VERSION)" -o bin/sl .
+	go build -ldflags="-s -w -X main.version=$(VERSION)" -o bin/sl ./cmd/sl
 
 install: build
 	cp bin/sl /usr/local/bin/sl
