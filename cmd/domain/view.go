@@ -52,7 +52,7 @@ func runView(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	domain, rawJSON, err := client.GetCustomDomain(id)
 	if err != nil {
 		return err

@@ -52,7 +52,7 @@ func runOptions(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 
 	opts, rawJSON, err := client.GetAliasOptions(optionsHostname)
 	if err != nil {

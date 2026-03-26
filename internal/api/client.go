@@ -452,14 +452,23 @@ type CreateRandomAliasRequest struct {
 }
 
 // CreateRandomAlias creates a random alias.
-func (c *Client) CreateRandomAlias(note, hostname string) (*Alias, []byte, error) {
+// hostname associates the alias with a specific website.
+// mode can be "uuid" or "word" (empty string uses server default).
+func (c *Client) CreateRandomAlias(note, hostname, mode string) (*Alias, []byte, error) {
 	var reqBody interface{}
 	if note != "" {
 		reqBody = &CreateRandomAliasRequest{Note: note}
 	}
 	path := "/api/alias/random/new"
+	params := url.Values{}
 	if hostname != "" {
-		path += "?hostname=" + url.QueryEscape(hostname)
+		params.Set("hostname", hostname)
+	}
+	if mode != "" {
+		params.Set("mode", mode)
+	}
+	if len(params) > 0 {
+		path += "?" + params.Encode()
 	}
 	body, status, err := c.do("POST", path, reqBody)
 	if err != nil {
