@@ -32,14 +32,21 @@ for all your aliases including total forwards, blocks, and replies.`,
   sl account status
 
   # View as JSON
-  sl account status --json`,
+  sl account status --json
+
+  # Filter JSON output with jq
+  sl account status --json --jq '.name'`,
 	RunE: runStatus,
 }
 
-var statusJSON bool
+var (
+	statusJSON bool
+	statusJQ   string
+)
 
 func init() {
 	statusCmd.Flags().BoolVar(&statusJSON, "json", false, "Output as JSON")
+	statusCmd.Flags().StringVar(&statusJQ, "jq", "", "Apply jq expression to JSON output")
 	Cmd.AddCommand(statusCmd)
 }
 
@@ -60,7 +67,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if statusJSON {
+	if statusJSON || statusJQ != "" {
 		// Merge info and stats into one JSON object
 		var combined map[string]interface{}
 		json.Unmarshal(infoJSON, &combined)
@@ -69,9 +76,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		for k, v := range statsMap {
 			combined[k] = v
 		}
-		data, _ := json.MarshalIndent(combined, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		data, _ := json.Marshal(combined)
+		if statusJQ != "" {
+			return output.PrintJQ(data, statusJQ)
+		}
+		return output.PrintJSON(data)
 	}
 
 	premium := "no"
