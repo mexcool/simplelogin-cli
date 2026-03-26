@@ -99,8 +99,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	if !deleteYes {
 		if !output.ConfirmAction(fmt.Sprintf("Delete mailbox %d?", id)) {
-			output.PrintWarning("Cancelled")
-			return nil
+			return fmt.Errorf("operation cancelled")
 		}
 	}
 

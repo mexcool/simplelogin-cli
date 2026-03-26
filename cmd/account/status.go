@@ -69,10 +69,14 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	if statusJSON || statusJQ != "" {
 		// Merge info and stats into one JSON object
-		var combined map[string]interface{}
-		json.Unmarshal(infoJSON, &combined)
+		combined := make(map[string]interface{})
+		if err := json.Unmarshal(infoJSON, &combined); err != nil {
+			return fmt.Errorf("failed to parse user info JSON: %w", err)
+		}
 		var statsMap map[string]interface{}
-		json.Unmarshal(statsJSON, &statsMap)
+		if err := json.Unmarshal(statsJSON, &statsMap); err != nil {
+			return fmt.Errorf("failed to parse stats JSON: %w", err)
+		}
 		for k, v := range statsMap {
 			combined[k] = v
 		}
