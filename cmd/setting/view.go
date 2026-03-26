@@ -21,14 +21,21 @@ for random aliases, sender format, and random alias suffix type.`,
   sl setting view
 
   # View as JSON
-  sl setting view --json`,
+  sl setting view --json
+
+  # Filter JSON output with jq
+  sl setting view --json --jq '.alias_generator'`,
 	RunE: runView,
 }
 
-var viewJSON bool
+var (
+	viewJSON bool
+	viewJQ   string
+)
 
 func init() {
 	viewCmd.Flags().BoolVar(&viewJSON, "json", false, "Output as JSON")
+	viewCmd.Flags().StringVar(&viewJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runView(cmd *cobra.Command, args []string) error {
@@ -43,7 +50,10 @@ func runView(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if viewJSON {
+	if viewJSON || viewJQ != "" {
+		if viewJQ != "" {
+			return output.PrintJQ(rawJSON, viewJQ)
+		}
 		return output.PrintJSON(rawJSON)
 	}
 
