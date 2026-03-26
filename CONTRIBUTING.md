@@ -50,3 +50,11 @@ go test ./...
 ## Reporting issues
 
 Use the [GitHub issue tracker](https://github.com/mexcool/simplelogin-cli/issues). Include your OS, Go version, and the exact command and output that demonstrates the problem.
+
+## Security vulnerabilities
+
+Please do **not** open a public issue for security vulnerabilities. Email **cli.chewy305@simplelogin.com** instead. See [SECURITY.md](SECURITY.md) for details.
+
+## Contact
+
+For questions or help, reach out at **cli.chewy305@simplelogin.com**.
