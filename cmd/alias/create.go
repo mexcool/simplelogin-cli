@@ -38,7 +38,10 @@ Optionally attach a note, display name, or assign to specific mailboxes.`,
   sl alias create --prefix myalias --suffix 0 --mailbox 123
 
   # Output new alias as JSON
-  sl alias create --random --json`,
+  sl alias create --random --json
+
+  # Filter JSON output with jq
+  sl alias create --random --json --jq '.email'`,
 	RunE: runCreate,
 }
 
@@ -50,6 +53,7 @@ var (
 	createNote    string
 	createName    string
 	createJSON    bool
+	createJQ      string
 )
 
 func init() {
@@ -60,6 +64,7 @@ func init() {
 	createCmd.Flags().StringVar(&createNote, "note", "", "Note for the alias")
 	createCmd.Flags().StringVar(&createName, "name", "", "Display name for the alias")
 	createCmd.Flags().BoolVar(&createJSON, "json", false, "Output as JSON")
+	createCmd.Flags().StringVar(&createJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -76,7 +81,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if createJSON {
+		if createJSON || createJQ != "" {
+			if createJQ != "" {
+				return output.PrintJQ(rawJSON, createJQ)
+			}
 			return output.PrintJSON(rawJSON)
 		}
 
@@ -163,7 +171,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if createJSON {
+	if createJSON || createJQ != "" {
+		if createJQ != "" {
+			return output.PrintJQ(rawJSON, createJQ)
+		}
 		return output.PrintJSON(rawJSON)
 	}
 

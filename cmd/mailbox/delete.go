@@ -36,7 +36,10 @@ You will be prompted for confirmation unless --yes is provided.`,
   sl mailbox delete 456 --dry-run
 
   # Delete and get JSON confirmation
-  sl mailbox delete 456 --yes --json`,
+  sl mailbox delete 456 --yes --json
+
+  # Filter JSON output with jq
+  sl mailbox delete 456 --yes --json --jq '.id'`,
 	Args: cobra.ExactArgs(1),
 	RunE: runDelete,
 }
@@ -45,6 +48,7 @@ var (
 	deleteTransferTo int
 	deleteYes        bool
 	deleteJSON       bool
+	deleteJQ         string
 	deleteDryRun     bool
 )
 
@@ -52,6 +56,7 @@ func init() {
 	deleteCmd.Flags().IntVar(&deleteTransferTo, "transfer-to", 0, "Transfer aliases to this mailbox ID")
 	deleteCmd.Flags().BoolVar(&deleteYes, "yes", false, "Skip confirmation prompt")
 	deleteCmd.Flags().BoolVar(&deleteJSON, "json", false, "Output as JSON")
+	deleteCmd.Flags().StringVar(&deleteJQ, "jq", "", "Apply jq expression to JSON output")
 	deleteCmd.Flags().BoolVar(&deleteDryRun, "dry-run", false, "Preview without deleting")
 }
 
@@ -83,9 +88,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		if found == nil {
 			return fmt.Errorf("mailbox %d not found (use 'sl mailbox list' to see available mailboxes)", id)
 		}
-		if deleteJSON {
+		if deleteJSON || deleteJQ != "" {
 			data, _ := json.Marshal(found)
-			fmt.Println(string(data))
+			if deleteJQ != "" {
+				_ = output.PrintJQ(data, deleteJQ)
+			} else {
+				_ = output.PrintJSON(data)
+			}
 		} else {
 			fmt.Fprintln(os.Stdout, "Would delete mailbox:")
 			fmt.Fprintf(os.Stdout, "  ID:      %d\n", found.ID)
@@ -112,10 +121,12 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if deleteJSON {
+	if deleteJSON || deleteJQ != "" {
 		data, _ := json.Marshal(map[string]interface{}{"deleted": true, "id": id})
-		fmt.Println(string(data))
-		return nil
+		if deleteJQ != "" {
+			return output.PrintJQ(data, deleteJQ)
+		}
+		return output.PrintJSON(data)
 	}
 	output.PrintSuccess("Mailbox deleted")
 	fmt.Println(id)

@@ -32,7 +32,10 @@ Accepts either a numeric alias ID or the full alias email address.`,
   sl alias delete 12345 --dry-run
 
   # Delete and get JSON confirmation
-  sl alias delete 12345 --yes --json`,
+  sl alias delete 12345 --yes --json
+
+  # Filter JSON output with jq
+  sl alias delete 12345 --yes --json --jq '.id'`,
 	Args: cobra.ExactArgs(1),
 	RunE: runDelete,
 }
@@ -40,12 +43,14 @@ Accepts either a numeric alias ID or the full alias email address.`,
 var (
 	deleteYes    bool
 	deleteJSON   bool
+	deleteJQ     string
 	deleteDryRun bool
 )
 
 func init() {
 	deleteCmd.Flags().BoolVar(&deleteYes, "yes", false, "Skip confirmation prompt")
 	deleteCmd.Flags().BoolVar(&deleteJSON, "json", false, "Output as JSON")
+	deleteCmd.Flags().StringVar(&deleteJQ, "jq", "", "Apply jq expression to JSON output")
 	deleteCmd.Flags().BoolVar(&deleteDryRun, "dry-run", false, "Preview without deleting")
 }
 
@@ -66,8 +71,12 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to fetch alias for preview: %w", err)
 		}
-		if deleteJSON {
-			_ = output.PrintJSON(rawJSON)
+		if deleteJSON || deleteJQ != "" {
+			if deleteJQ != "" {
+				_ = output.PrintJQ(rawJSON, deleteJQ)
+			} else {
+				_ = output.PrintJSON(rawJSON)
+			}
 		} else {
 			fmt.Fprintln(os.Stdout, "Would delete alias:")
 			fmt.Fprintf(os.Stdout, "  ID:     %d\n", alias.ID)
@@ -89,10 +98,12 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if deleteJSON {
+	if deleteJSON || deleteJQ != "" {
 		data, _ := json.Marshal(map[string]interface{}{"deleted": true, "id": id})
-		fmt.Println(string(data))
-		return nil
+		if deleteJQ != "" {
+			return output.PrintJQ(data, deleteJQ)
+		}
+		return output.PrintJSON(data)
 	}
 	output.PrintSuccess("Alias deleted")
 	fmt.Println(id)

@@ -32,7 +32,10 @@ Use "sl contact list <alias>" to find contact IDs.`,
   sl contact delete 456 --dry-run
 
   # Delete and get JSON confirmation
-  sl contact delete 456 --yes --json`,
+  sl contact delete 456 --yes --json
+
+  # Filter JSON output with jq
+  sl contact delete 456 --yes --json --jq '.id'`,
 	Args: cobra.ExactArgs(1),
 	RunE: runDelete,
 }
@@ -40,12 +43,14 @@ Use "sl contact list <alias>" to find contact IDs.`,
 var (
 	deleteYes    bool
 	deleteJSON   bool
+	deleteJQ     string
 	deleteDryRun bool
 )
 
 func init() {
 	deleteCmd.Flags().BoolVar(&deleteYes, "yes", false, "Skip confirmation prompt")
 	deleteCmd.Flags().BoolVar(&deleteJSON, "json", false, "Output as JSON")
+	deleteCmd.Flags().StringVar(&deleteJQ, "jq", "", "Apply jq expression to JSON output")
 	deleteCmd.Flags().BoolVar(&deleteDryRun, "dry-run", false, "Preview without deleting")
 }
 
@@ -61,9 +66,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if deleteDryRun {
-		if deleteJSON {
+		if deleteJSON || deleteJQ != "" {
 			data, _ := json.Marshal(map[string]interface{}{"id": id})
-			fmt.Println(string(data))
+			if deleteJQ != "" {
+				_ = output.PrintJQ(data, deleteJQ)
+			} else {
+				_ = output.PrintJSON(data)
+			}
 		} else {
 			fmt.Printf("Would delete contact %d\n", id)
 		}
@@ -82,10 +91,12 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if deleteJSON {
+	if deleteJSON || deleteJQ != "" {
 		data, _ := json.Marshal(map[string]interface{}{"deleted": true, "id": id})
-		fmt.Println(string(data))
-		return nil
+		if deleteJQ != "" {
+			return output.PrintJQ(data, deleteJQ)
+		}
+		return output.PrintJSON(data)
 	}
 	output.PrintSuccess("Contact deleted")
 	fmt.Println(id)
