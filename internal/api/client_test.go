@@ -18,8 +18,7 @@ import (
 // newTestClient returns an API client pointed at the given httptest server.
 func newTestClient(t *testing.T, server *httptest.Server) *Client {
 	t.Helper()
-	c := NewClient("test-api-key")
-	c.baseURL = server.URL
+	c := NewClient("test-api-key", server.URL)
 	return c
 }
 
@@ -109,7 +108,7 @@ func TestHandleError_500_InvalidJSON(t *testing.T) {
 
 func TestResolveAliasID_IntegerInput(t *testing.T) {
 	// Should parse directly without making any HTTP request
-	c := NewClient("unused")
+	c := NewClient("unused", "")
 	id, err := c.ResolveAliasID("12345")
 	if err != nil {
 		t.Fatalf("ResolveAliasID('12345'): %v", err)
@@ -508,7 +507,7 @@ func TestClient_ListAllAliases_Pagination(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewClient_Defaults(t *testing.T) {
-	c := NewClient("my-key")
+	c := NewClient("my-key", "")
 	if c.apiKey != "my-key" {
 		t.Errorf("apiKey = %q, want %q", c.apiKey, "my-key")
 	}
@@ -517,6 +516,13 @@ func TestNewClient_Defaults(t *testing.T) {
 	}
 	if c.httpClient == nil {
 		t.Error("httpClient should not be nil")
+	}
+}
+
+func TestNewClient_CustomBaseURL(t *testing.T) {
+	c := NewClient("my-key", "https://sl.example.com")
+	if c.baseURL != "https://sl.example.com" {
+		t.Errorf("baseURL = %q, want %q", c.baseURL, "https://sl.example.com")
 	}
 }
 
@@ -539,8 +545,7 @@ func TestClient_AuthenticationHeader(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient("secret-key")
-	c.baseURL = srv.URL
+	c := NewClient("secret-key", srv.URL)
 	_, _, err := c.GetStats()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -566,7 +571,7 @@ func TestWrapNetworkError_DNS(t *testing.T) {
 	}
 	wrapped := wrapNetworkError(orig)
 	if !strings.Contains(wrapped.Error(), "could not resolve app.simplelogin.io") {
-		t.Errorf("expected DNS error message, got: %v", wrapped)
+		t.Errorf("expected DNS error message containing hostname, got: %v", wrapped)
 	}
 	// Original error must be preserved in the chain
 	var dnsErr *net.DNSError

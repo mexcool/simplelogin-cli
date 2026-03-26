@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mexcool/simplelogin-cli/internal/api"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -155,4 +156,20 @@ func MaskKey(key string) string {
 func GetOPRef() string {
 	cfg := loadConfig()
 	return cfg.OPRef
+}
+
+// GetAPIBase returns the configured API base URL, or the default if none is set.
+func GetAPIBase() string {
+	cfg := loadConfig()
+	if cfg.APIBase != "" {
+		return cfg.APIBase
+	}
+	return api.BaseURL
+}
+
+// SaveAPIBase stores the API base URL in the config file.
+func SaveAPIBase(baseURL string) error {
+	cfg := loadConfig()
+	cfg.APIBase = strings.TrimRight(baseURL, "/")
+	return saveConfig(cfg)
 }

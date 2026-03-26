@@ -32,15 +32,19 @@ type Client struct {
 	verbose    bool
 }
 
-// NewClient creates a new API client with the given API key.
+// NewClient creates a new API client with the given API key and base URL.
+// If baseURL is empty, the default BaseURL is used.
 // It inherits the current value of the package-level Verbose flag.
-func NewClient(apiKey string) *Client {
+func NewClient(apiKey, baseURL string) *Client {
+	if baseURL == "" {
+		baseURL = BaseURL
+	}
 	return &Client{
 		apiKey: apiKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		baseURL: BaseURL,
+		baseURL: baseURL,
 		verbose: Verbose,
 	}
 }
@@ -50,7 +54,7 @@ func NewClient(apiKey string) *Client {
 func wrapNetworkError(err error) error {
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
-		return fmt.Errorf("could not resolve app.simplelogin.io — check your internet connection: %w", err)
+		return fmt.Errorf("could not resolve %s — check your internet connection: %w", dnsErr.Name, err)
 	}
 
 	var opErr *net.OpError

@@ -73,7 +73,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 
 	if createRandom {
 		alias, rawJSON, err := client.CreateRandomAlias(createNote)

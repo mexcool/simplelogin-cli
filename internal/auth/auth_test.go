@@ -287,6 +287,58 @@ func TestConfigPath(t *testing.T) {
 // GetOPRef
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// GetAPIBase / SaveAPIBase
+// ---------------------------------------------------------------------------
+
+func TestGetAPIBase_Default(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	got := GetAPIBase()
+	if got != "https://app.simplelogin.io" {
+		t.Errorf("GetAPIBase() with no config = %q, want default", got)
+	}
+}
+
+func TestGetAPIBase_Custom(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	if err := saveConfig(Config{APIBase: "https://sl.example.com"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := GetAPIBase()
+	if got != "https://sl.example.com" {
+		t.Errorf("GetAPIBase() = %q, want %q", got, "https://sl.example.com")
+	}
+}
+
+func TestSaveAPIBase(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	// Pre-populate with an API key to ensure it's preserved
+	if err := SaveAPIKey("my-key"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SaveAPIBase("https://sl.example.com/"); err != nil {
+		t.Fatalf("SaveAPIBase: %v", err)
+	}
+
+	cfg := loadConfig()
+	// Trailing slash should be stripped
+	if cfg.APIBase != "https://sl.example.com" {
+		t.Errorf("APIBase = %q, want %q", cfg.APIBase, "https://sl.example.com")
+	}
+	// API key should still be there
+	if cfg.APIKey != "my-key" {
+		t.Errorf("APIKey should be preserved after SaveAPIBase, got %q", cfg.APIKey)
+	}
+}
+
 func TestGetOPRef(t *testing.T) {
 	dir := t.TempDir()
 	setConfigDir(t, dir)
