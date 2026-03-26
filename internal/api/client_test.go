@@ -340,7 +340,7 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv)
-	alias, _, err := c.CreateRandomAlias("test note")
+	alias, _, err := c.CreateRandomAlias("test note", "")
 	if err != nil {
 		t.Fatalf("CreateRandomAlias: %v", err)
 	}
@@ -349,6 +349,37 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 	}
 	if alias.Email != "random123@sl.local" {
 		t.Errorf("expected email random123@sl.local, got %q", alias.Email)
+	}
+}
+
+func TestClient_CreateRandomAlias_WithMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/alias/random/new" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		mode := r.URL.Query().Get("mode")
+		if mode != "word" {
+			t.Errorf("expected mode=word, got %q", mode)
+		}
+		w.WriteHeader(201)
+		alias := Alias{ID: 101, Email: "word-random@sl.local"}
+		_ = json.NewEncoder(w).Encode(alias)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	alias, _, err := c.CreateRandomAlias("", "word")
+	if err != nil {
+		t.Fatalf("CreateRandomAlias with mode: %v", err)
+	}
+	if alias.ID != 101 {
+		t.Errorf("expected ID 101, got %d", alias.ID)
+	}
+	if alias.Email != "word-random@sl.local" {
+		t.Errorf("expected email word-random@sl.local, got %q", alias.Email)
 	}
 }
 

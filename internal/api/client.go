@@ -439,12 +439,21 @@ type CreateRandomAliasRequest struct {
 }
 
 // CreateRandomAlias creates a random alias.
-func (c *Client) CreateRandomAlias(note string) (*Alias, []byte, error) {
+// mode can be "uuid" or "word" (empty string uses server default).
+func (c *Client) CreateRandomAlias(note, mode string) (*Alias, []byte, error) {
 	var reqBody interface{}
 	if note != "" {
 		reqBody = &CreateRandomAliasRequest{Note: note}
 	}
-	body, status, err := c.do("POST", "/api/alias/random/new", reqBody)
+	path := "/api/alias/random/new"
+	params := url.Values{}
+	if mode != "" {
+		params.Set("mode", mode)
+	}
+	if len(params) > 0 {
+		path += "?" + params.Encode()
+	}
+	body, status, err := c.do("POST", path, reqBody)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create random alias: %w", err)
 	}
