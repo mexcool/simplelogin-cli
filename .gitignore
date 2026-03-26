@@ -1,6 +1,9 @@
 # Build output
 bin/
 
+# Generated man pages
+man/
+
 # Go
 *.test
 *.out
