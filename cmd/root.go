@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/mexcool/simplelogin-cli/cmd/account"
@@ -39,10 +40,34 @@ Output:
 	SilenceErrors: true,
 }
 
-// SetVersion sets the version string shown by --version.
-func SetVersion(v string) {
+// SetVersionInfo sets the version string shown by --version, including
+// optional build metadata (commit hash and build date).
+func SetVersionInfo(v, commit, date string) {
 	version = v
-	rootCmd.Version = v
+	display := v
+	if commit != "" || date != "" {
+		parts := make([]string, 0, 2)
+		if commit != "" {
+			parts = append(parts, commit)
+		}
+		if date != "" {
+			parts = append(parts, date)
+		}
+		display = fmt.Sprintf("%s (%s)", v, joinStrings(parts, ", "))
+	}
+	rootCmd.Version = display
+}
+
+// joinStrings concatenates strings with a separator (avoids importing strings package for one call).
+func joinStrings(elems []string, sep string) string {
+	if len(elems) == 0 {
+		return ""
+	}
+	result := elems[0]
+	for _, e := range elems[1:] {
+		result += sep + e
+	}
+	return result
 }
 
 // Execute runs the root command.
