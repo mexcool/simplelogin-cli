@@ -1,5 +1,8 @@
 # SimpleLogin CLI (`sl`)
 
+[![Go version](https://img.shields.io/badge/go-1.24-blue?logo=go)](https://golang.org/doc/go1.24)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A command-line interface for the [SimpleLogin](https://simplelogin.io) email alias service. Manage aliases, contacts, mailboxes, domains, and settings directly from your terminal.
 
 ## Installation
@@ -16,6 +19,16 @@ brew install sl
 ```bash
 go install github.com/mexcool/simplelogin-cli/cmd/sl@latest
 ```
+
+> **Note:** `go install` places the binary in `$GOPATH/bin` (or `$HOME/go/bin`) under the name `simplelogin-cli`, not `sl`. Rename it or create an alias so the examples in this README work as written:
+>
+> ```bash
+> # Option A — rename the binary
+> mv "$(go env GOPATH)/bin/simplelogin-cli" "$(go env GOPATH)/bin/sl"
+>
+> # Option B — shell alias (add to ~/.bashrc or ~/.zshrc)
+> alias sl='simplelogin-cli'
+> ```
 
 ### GitHub Releases
 
@@ -99,6 +112,20 @@ sl alias toggle 12345
 # Check account status
 sl account status
 ```
+
+## Version
+
+Check the installed version:
+
+```bash
+sl --version
+# sl version v0.1.0 (abc1234, 2026-01-15T10:30:00Z)
+
+# or equivalently
+sl version
+```
+
+Binaries from the [Releases](https://github.com/mexcool/simplelogin-cli/releases) page and Homebrew include the version tag, commit hash, and build date. When installed via `go install` without explicit ldflags, the Go module version (e.g. `v0.1.0`) is shown if available; otherwise it falls back to `dev`.
 
 ## Command Reference
 
