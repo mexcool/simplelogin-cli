@@ -13,11 +13,15 @@ import (
 var configDir string
 
 func init() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		configDir = ".config/simplelogin"
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		configDir = filepath.Join(xdg, "simplelogin")
 	} else {
-		configDir = filepath.Join(home, ".config", "simplelogin")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			configDir = filepath.Join(".config", "simplelogin")
+		} else {
+			configDir = filepath.Join(home, ".config", "simplelogin")
+		}
 	}
 }
 

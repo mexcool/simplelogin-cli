@@ -21,7 +21,7 @@ There are three ways to authenticate:
 
 1. Direct API key:
    Provide your API key directly. It will be stored in
-   ~/.config/simplelogin/config.yml.
+   $XDG_CONFIG_HOME/simplelogin/config.yml (defaults to ~/.config/simplelogin/config.yml).
 
 2. 1Password integration:
    Store a reference to your API key in 1Password. The CLI will
