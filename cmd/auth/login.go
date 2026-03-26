@@ -33,12 +33,18 @@ There are three ways to authenticate:
    API key interactively.
 
 You can obtain an API key from your SimpleLogin dashboard at
-https://app.simplelogin.io/dashboard/setting#api-key`,
+https://app.simplelogin.io/dashboard/setting#api-key
+
+For self-hosted SimpleLogin instances, use --url to specify the base URL
+of your server (e.g. https://sl.example.com).`,
 	Example: `  # Login with API key directly
   sl auth login --key sl_xxxxxxxxxxxxx
 
   # Login with 1Password integration
   sl auth login --1password --vault Personal --item "SimpleLogin API Key"
+
+  # Login to a self-hosted instance
+  sl auth login --key sl_xxxxxxxxxxxxx --url https://sl.example.com
 
   # Login interactively (will prompt for key)
   sl auth login`,
@@ -47,6 +53,7 @@ https://app.simplelogin.io/dashboard/setting#api-key`,
 
 var (
 	loginKey       string
+	loginURL       string
 	login1Password bool
 	loginVault     string
 	loginItem      string
@@ -54,12 +61,20 @@ var (
 
 func init() {
 	loginCmd.Flags().StringVar(&loginKey, "key", "", "API key to store (note: value will appear in shell history and ps output; prefer interactive or --1password)")
+	loginCmd.Flags().StringVar(&loginURL, "url", "", "Base URL of a self-hosted SimpleLogin instance (e.g. https://sl.example.com)")
 	loginCmd.Flags().BoolVar(&login1Password, "1password", false, "Use 1Password integration")
 	loginCmd.Flags().StringVar(&loginVault, "vault", "", "1Password vault name")
 	loginCmd.Flags().StringVar(&loginItem, "item", "", "1Password item name")
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
+	// Save custom base URL first so all subsequent API calls use it
+	if loginURL != "" {
+		if err := intauth.SaveAPIBase(loginURL); err != nil {
+			return fmt.Errorf("failed to save API base URL: %w", err)
+		}
+	}
+
 	if login1Password {
 		if loginVault == "" || loginItem == "" {
 			return fmt.Errorf("--vault and --item are required with --1password")
@@ -77,7 +92,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		client := api.NewClient(key)
+		client := api.NewClient(key, intauth.GetAPIBase())
 		info, _, err := client.GetUserInfo()
 		if err != nil {
 			output.PrintWarning("1Password reference saved, but API validation failed: %v", err)
@@ -85,6 +100,9 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		}
 
 		output.PrintSuccess("Authenticated as %s (%s) via 1Password", info.Name, info.Email)
+		if loginURL != "" {
+			output.PrintSuccess("Using custom API URL: %s", intauth.GetAPIBase())
+		}
 		return nil
 	}
 
@@ -105,7 +123,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate key by calling the API
-	client := api.NewClient(key)
+	client := api.NewClient(key, intauth.GetAPIBase())
 	info, _, err := client.GetUserInfo()
 	if err != nil {
 		return fmt.Errorf("invalid API key: %w", err)
@@ -118,5 +136,8 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	output.PrintSuccess("Authenticated as %s (%s)", info.Name, info.Email)
 	output.PrintSuccess("API key saved to %s", intauth.ConfigPath())
+	if loginURL != "" {
+		output.PrintSuccess("Using custom API URL: %s", intauth.GetAPIBase())
+	}
 	return nil
 }

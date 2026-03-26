@@ -28,7 +28,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	// Try to logout from server
 	key, err := intauth.GetAPIKey()
 	if err == nil {
-		client := api.NewClient(key)
+		client := api.NewClient(key, intauth.GetAPIBase())
 		_ = client.Logout()
 	}
 

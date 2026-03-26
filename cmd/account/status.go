@@ -56,7 +56,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	info, infoJSON, err := client.GetUserInfo()
 	if err != nil {
 		return err

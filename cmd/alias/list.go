@@ -13,8 +13,9 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List aliases",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List aliases",
 	Long: `List your SimpleLogin email aliases with optional filtering.
 
 By default, lists the first page of aliases (20 per page). Use --all
@@ -68,7 +69,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 
 	if listAll {
 		aliases, err := client.ListAllAliases(listPinned, listDisabled, listEnabled, listQuery)

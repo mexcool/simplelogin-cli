@@ -32,15 +32,19 @@ type Client struct {
 	verbose    bool
 }
 
-// NewClient creates a new API client with the given API key.
+// NewClient creates a new API client with the given API key and base URL.
+// If baseURL is empty, the default BaseURL is used.
 // It inherits the current value of the package-level Verbose flag.
-func NewClient(apiKey string) *Client {
+func NewClient(apiKey, baseURL string) *Client {
+	if baseURL == "" {
+		baseURL = BaseURL
+	}
 	return &Client{
 		apiKey: apiKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		baseURL: BaseURL,
+		baseURL: baseURL,
 		verbose: Verbose,
 	}
 }
@@ -50,7 +54,7 @@ func NewClient(apiKey string) *Client {
 func wrapNetworkError(err error) error {
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
-		return fmt.Errorf("could not resolve app.simplelogin.io — check your internet connection: %w", err)
+		return fmt.Errorf("could not resolve %s — check your internet connection: %w", dnsErr.Name, err)
 	}
 
 	var opErr *net.OpError
@@ -388,11 +392,19 @@ type AliasOptions struct {
 type SuffixOption struct {
 	Suffix       string `json:"suffix"`
 	SignedSuffix string `json:"signed_suffix"`
+	IsCustom     bool   `json:"is_custom"`
+	IsPremium    bool   `json:"is_premium"`
 }
 
 // GetAliasOptions retrieves options for creating a custom alias.
-func (c *Client) GetAliasOptions() (*AliasOptions, []byte, error) {
-	body, status, err := c.do("GET", "/api/v5/alias/options", nil)
+// When hostname is non-empty it is passed as a query parameter so the
+// API can tailor the response (e.g. suggest a prefix based on the site).
+func (c *Client) GetAliasOptions(hostname string) (*AliasOptions, []byte, error) {
+	path := "/api/v5/alias/options"
+	if hostname != "" {
+		path += "?hostname=" + url.QueryEscape(hostname)
+	}
+	body, status, err := c.do("GET", path, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get alias options: %w", err)
 	}
@@ -414,6 +426,7 @@ type CreateCustomAliasRequest struct {
 	MailboxIDs   []int  `json:"mailbox_ids"`
 	Note         string `json:"note,omitempty"`
 	Name         string `json:"name,omitempty"`
+	Hostname     string `json:"hostname,omitempty"`
 }
 
 // CreateCustomAlias creates a custom alias.
@@ -439,14 +452,18 @@ type CreateRandomAliasRequest struct {
 }
 
 // CreateRandomAlias creates a random alias.
+// hostname associates the alias with a specific website.
 // mode can be "uuid" or "word" (empty string uses server default).
-func (c *Client) CreateRandomAlias(note, mode string) (*Alias, []byte, error) {
+func (c *Client) CreateRandomAlias(note, hostname, mode string) (*Alias, []byte, error) {
 	var reqBody interface{}
 	if note != "" {
 		reqBody = &CreateRandomAliasRequest{Note: note}
 	}
 	path := "/api/alias/random/new"
 	params := url.Values{}
+	if hostname != "" {
+		params.Set("hostname", hostname)
+	}
 	if mode != "" {
 		params.Set("mode", mode)
 	}
@@ -740,6 +757,23 @@ type CustomDomain struct {
 // CustomDomainListResponse is the response for listing custom domains.
 type CustomDomainListResponse struct {
 	CustomDomains []CustomDomain `json:"custom_domains"`
+}
+
+// GetCustomDomain retrieves a single custom domain by ID.
+func (c *Client) GetCustomDomain(id int) (*CustomDomain, []byte, error) {
+	body, status, err := c.do("GET", fmt.Sprintf("/api/custom_domains/%d", id), nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get custom domain: %w", err)
+	}
+	if status != 200 {
+		return nil, body, HandleError(status, body, "get custom domain")
+	}
+
+	var domain CustomDomain
+	if err := json.Unmarshal(body, &domain); err != nil {
+		return nil, body, fmt.Errorf("failed to parse custom domain: %w", err)
+	}
+	return &domain, body, nil
 }
 
 // ListCustomDomains retrieves all custom domains.

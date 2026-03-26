@@ -12,8 +12,9 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <alias-id-or-email>",
-	Short: "Delete an alias",
+	Use:     "delete <alias-id-or-email>",
+	Aliases: []string{"rm"},
+	Short:   "Delete an alias",
 	Long: `Permanently delete a SimpleLogin alias.
 
 This action is irreversible. The alias will stop forwarding emails
@@ -60,7 +61,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	id, err := client.ResolveAliasID(args[0])
 	if err != nil {
 		return err

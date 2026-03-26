@@ -63,7 +63,7 @@ func setContactBlockState(idStr string, wantBlocked bool, jsonFlag bool, jqExpr 
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 
 	blocked, rawJSON, err := client.ToggleContact(id)
 	if err != nil {

@@ -19,6 +19,7 @@ Custom domains require a premium SimpleLogin subscription.`,
 
 func init() {
 	Cmd.AddCommand(listCmd)
+	Cmd.AddCommand(viewCmd)
 	Cmd.AddCommand(editCmd)
 	Cmd.AddCommand(trashCmd)
 }
