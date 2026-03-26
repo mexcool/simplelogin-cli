@@ -2,9 +2,12 @@ package api
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,6 +44,74 @@ func NewClient(apiKey string) *Client {
 	}
 }
 
+// wrapNetworkError inspects common network error types and returns a
+// user-friendly message while preserving the original error in the chain.
+func wrapNetworkError(err error) error {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return fmt.Errorf("could not resolve app.simplelogin.io — check your internet connection: %w", err)
+	}
+
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		// Connection refused is a syscall error with the message "connection refused".
+		if opErr.Op == "dial" {
+			inner := opErr.Unwrap()
+			if inner != nil && isConnectionRefused(inner) {
+				return fmt.Errorf("could not connect to SimpleLogin API: %w", err)
+			}
+		}
+
+		// Timeout (either deadline exceeded or the http.Client Timeout fired).
+		if opErr.Timeout() {
+			return fmt.Errorf("request timed out — check your internet connection: %w", err)
+		}
+
+		// TLS errors surface as *tls.AlertError or *tls.RecordHeaderError wrapped
+		// inside a net.OpError whose Op is "remote error" or whose inner type is
+		// a tls error.
+		if opErr.Op == "remote error" {
+			return fmt.Errorf("TLS handshake failed — check your network configuration: %w", err)
+		}
+		var tlsAlert tls.AlertError
+		if errors.As(opErr, &tlsAlert) {
+			return fmt.Errorf("TLS handshake failed — check your network configuration: %w", err)
+		}
+		var tlsRecordErr *tls.RecordHeaderError
+		if errors.As(opErr, &tlsRecordErr) {
+			return fmt.Errorf("TLS handshake failed — check your network configuration: %w", err)
+		}
+	}
+
+	// Generic timeout check for url.Error (wraps net.OpError on timeouts).
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Timeout() {
+		return fmt.Errorf("request timed out — check your internet connection: %w", err)
+	}
+
+	return err
+}
+
+// isConnectionRefused reports whether err represents a "connection refused" syscall error.
+func isConnectionRefused(err error) bool {
+	// The most portable check is a string match on the syscall error message.
+	return err != nil && (err.Error() == "connection refused" ||
+		containsString(err.Error(), "connection refused"))
+}
+
+// containsString is a simple helper to avoid importing "strings" just for this.
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr ||
+		func() bool {
+			for i := 0; i <= len(s)-len(substr); i++ {
+				if s[i:i+len(substr)] == substr {
+					return true
+				}
+			}
+			return false
+		}())
+}
+
 func (c *Client) do(method, path string, body interface{}) ([]byte, int, error) {
 	var reqBody io.Reader
 	if body != nil {
@@ -67,7 +138,7 @@ func (c *Client) do(method, path string, body interface{}) ([]byte, int, error) 
 		if c.verbose {
 			fmt.Fprintf(os.Stderr, "DEBUG: %s %s → error (%dms)\n", method, fullURL, elapsed.Milliseconds())
 		}
-		return nil, 0, fmt.Errorf("request failed: %w", err)
+		return nil, 0, wrapNetworkError(err)
 	}
 	defer resp.Body.Close()
 
