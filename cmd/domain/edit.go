@@ -34,6 +34,9 @@ auto-created aliases on this domain.`,
   # Set a display name
   sl domain edit 123 --name "My Domain"
 
+  # Assign specific mailboxes to a domain
+  sl domain edit 123 --mailbox 1 --mailbox 2
+
   # Edit and return updated domain as JSON
   sl domain edit 123 --catch-all --json`,
 	Args: cobra.ExactArgs(1),
@@ -46,6 +49,7 @@ var (
 	editRandomPrefix   bool
 	editNoRandomPrefix bool
 	editName           string
+	editMailbox        []int
 	editJSON           bool
 	editJQ             string
 )
@@ -56,6 +60,7 @@ func init() {
 	editCmd.Flags().BoolVar(&editRandomPrefix, "random-prefix", false, "Enable random prefix generation")
 	editCmd.Flags().BoolVar(&editNoRandomPrefix, "no-random-prefix", false, "Disable random prefix generation")
 	editCmd.Flags().StringVar(&editName, "name", "", "Set display name")
+	editCmd.Flags().IntSliceVar(&editMailbox, "mailbox", nil, "Mailbox IDs to assign (can be repeated)")
 	editCmd.Flags().BoolVar(&editJSON, "json", false, "Output updated domain as JSON")
 	editCmd.Flags().StringVar(&editJQ, "jq", "", "Apply jq expression to JSON output")
 }
@@ -96,6 +101,10 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 	if cmd.Flags().Changed("name") {
 		req.Name = &editName
+		hasChanges = true
+	}
+	if len(editMailbox) > 0 {
+		req.MailboxIDs = editMailbox
 		hasChanges = true
 	}
 
