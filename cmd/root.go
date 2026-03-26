@@ -40,8 +40,7 @@ Authentication:
 Output:
   By default, commands display colored table output. Use --json for
   machine-readable JSON output, or --jq to filter JSON with jq expressions.`,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if verbose || os.Getenv("SL_VERBOSE") == "1" || os.Getenv("SL_DEBUG") == "1" {
 			api.Verbose = true

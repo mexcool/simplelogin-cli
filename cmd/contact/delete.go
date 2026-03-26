@@ -52,12 +52,11 @@ func init() {
 func runDelete(cmd *cobra.Command, args []string) error {
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid contact ID: %s", args[0])
+		return fmt.Errorf("invalid contact ID %q: expected a numeric ID (use 'sl contact list <alias>' to find IDs)", args[0])
 	}
 
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -81,7 +80,6 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	client := api.NewClient(key)
 	if err := client.DeleteContact(id); err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

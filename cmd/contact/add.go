@@ -42,20 +42,17 @@ func init() {
 func runAdd(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	aliasID, err := client.ResolveAliasID(args[0])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	contact, rawJSON, err := client.CreateContact(aliasID, args[1])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
