@@ -41,19 +41,23 @@ Optionally attach a note, display name, or assign to specific mailboxes.`,
   sl alias create --random --json
 
   # Filter JSON output with jq
-  sl alias create --random --json --jq '.email'`,
+  sl alias create --random --json --jq '.email'
+
+  # Create a random alias associated with a hostname
+  sl alias create --random --hostname example.com`,
 	RunE: runCreate,
 }
 
 var (
-	createPrefix  string
-	createRandom  bool
-	createSuffix  string
-	createMailbox []int
-	createNote    string
-	createName    string
-	createJSON    bool
-	createJQ      string
+	createPrefix   string
+	createRandom   bool
+	createSuffix   string
+	createMailbox  []int
+	createNote     string
+	createName     string
+	createHostname string
+	createJSON     bool
+	createJQ       string
 )
 
 func init() {
@@ -63,6 +67,7 @@ func init() {
 	createCmd.Flags().IntSliceVar(&createMailbox, "mailbox", nil, "Mailbox IDs to assign")
 	createCmd.Flags().StringVar(&createNote, "note", "", "Note for the alias")
 	createCmd.Flags().StringVar(&createName, "name", "", "Display name for the alias")
+	createCmd.Flags().StringVar(&createHostname, "hostname", "", "Associate alias with a hostname/website")
 	createCmd.Flags().BoolVar(&createJSON, "json", false, "Output as JSON")
 	createCmd.Flags().StringVar(&createJQ, "jq", "", "Apply jq expression to JSON output")
 }
@@ -76,7 +81,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	client := api.NewClient(key)
 
 	if createRandom {
-		alias, rawJSON, err := client.CreateRandomAlias(createNote)
+		alias, rawJSON, err := client.CreateRandomAlias(createNote, createHostname)
 		if err != nil {
 			return err
 		}
@@ -164,6 +169,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		MailboxIDs:   mailboxIDs,
 		Note:         createNote,
 		Name:         createName,
+		Hostname:     createHostname,
 	}
 
 	alias, rawJSON, err := client.CreateCustomAlias(req)
