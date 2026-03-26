@@ -12,10 +12,14 @@ import (
 	"github.com/mexcool/simplelogin-cli/cmd/export"
 	"github.com/mexcool/simplelogin-cli/cmd/mailbox"
 	"github.com/mexcool/simplelogin-cli/cmd/setting"
+	"github.com/mexcool/simplelogin-cli/internal/api"
 	"github.com/spf13/cobra"
 )
 
-var version = "dev"
+var (
+	version = "dev"
+	verbose bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "sl",
@@ -38,6 +42,11 @@ Output:
   machine-readable JSON output, or --jq to filter JSON with jq expressions.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if verbose || os.Getenv("SL_VERBOSE") == "1" || os.Getenv("SL_DEBUG") == "1" {
+			api.Verbose = true
+		}
+	},
 }
 
 // SetVersionInfo sets the version string shown by --version, including
@@ -109,6 +118,8 @@ var completionCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Log HTTP requests to stderr (method, URL, status, latency)")
+
 	rootCmd.AddCommand(cmdauth.Cmd)
 	rootCmd.AddCommand(alias.Cmd)
 	rootCmd.AddCommand(contact.Cmd)
