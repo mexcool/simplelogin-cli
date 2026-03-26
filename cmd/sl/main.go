@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"runtime/debug"
+	"strings"
 
 	"github.com/mexcool/simplelogin-cli/cmd"
 )
@@ -39,6 +40,19 @@ func main() {
 
 	cmd.SetVersionInfo(version, commit, date)
 	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
+		// Exit code 2 for usage/validation errors (POSIX EX_USAGE convention).
+		// This lets scripts distinguish "I called the CLI wrong" from
+		// "the API returned an error" without parsing stderr.
+		exitCode := 1
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "unknown flag") ||
+			strings.Contains(errMsg, "unknown shorthand flag") ||
+			strings.Contains(errMsg, "unknown command") ||
+			strings.Contains(errMsg, "accepts") || // "accepts N arg(s)"
+			strings.Contains(errMsg, "required flag") ||
+			strings.Contains(errMsg, "invalid argument") {
+			exitCode = 2
+		}
+		os.Exit(exitCode)
 	}
 }

@@ -24,4 +24,6 @@ func init() {
 	Cmd.AddCommand(addCmd)
 	Cmd.AddCommand(deleteCmd)
 	Cmd.AddCommand(toggleCmd)
+	Cmd.AddCommand(blockCmd)
+	Cmd.AddCommand(unblockCmd)
 }

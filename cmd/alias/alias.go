@@ -25,6 +25,8 @@ func init() {
 	Cmd.AddCommand(viewCmd)
 	Cmd.AddCommand(deleteCmd)
 	Cmd.AddCommand(toggleCmd)
+	Cmd.AddCommand(enableCmd)
+	Cmd.AddCommand(disableCmd)
 	Cmd.AddCommand(editCmd)
 	Cmd.AddCommand(activityCmd)
 }
