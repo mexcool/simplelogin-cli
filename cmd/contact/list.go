@@ -12,8 +12,9 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list <alias-id-or-email>",
-	Short: "List contacts for an alias",
+	Use:     "list <alias-id-or-email>",
+	Aliases: []string{"ls"},
+	Short:   "List contacts for an alias",
 	Long: `List all contacts associated with a specific alias.
 
 Shows the contact email, reverse alias address (for sending mail as the alias),

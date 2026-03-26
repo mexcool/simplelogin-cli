@@ -12,8 +12,9 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <contact-id>",
-	Short: "Delete a contact",
+	Use:     "delete <contact-id>",
+	Aliases: []string{"rm"},
+	Short:   "Delete a contact",
 	Long: `Delete a contact by its ID.
 
 This removes the contact and its reverse alias. You will be prompted
