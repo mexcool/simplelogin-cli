@@ -5,7 +5,7 @@
 [![Go version](https://img.shields.io/badge/go-1.24-blue?logo=go)](https://golang.org/doc/go1.24)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A command-line interface for the [SimpleLogin](https://simplelogin.io) email alias service. Manage aliases, contacts, mailboxes, domains, and settings directly from your terminal.
+A command-line interface for the [SimpleLogin](https://simplelogin.io) email alias service. Manage aliases, contacts, mailboxes, domains, and settings directly from your terminal. For you and your agents.
 
 ## Installation
 
@@ -70,6 +70,16 @@ sl auth login --1password --vault Personal --item "SimpleLogin API Key"
 
 This stores an `op://` reference in the config file. The actual key is fetched via the `op` CLI each time it's needed. You must have the [1Password CLI](https://developer.1password.com/docs/cli/) installed and signed in.
 
+### Self-hosted instances
+
+If you run a self-hosted SimpleLogin instance, pass your URL at login:
+
+```bash
+sl auth login --key sl_xxxxxxxxxxxxx --url https://sl.example.com
+```
+
+The URL is stored in the config file and used for all subsequent API calls.
+
 ### Verify authentication
 
 ```bash
@@ -78,7 +88,7 @@ sl auth status
 
 ### Get your API key
 
-1. Go to https://app.simplelogin.io/dashboard/setting
+1. Go to https://app.simplelogin.io/dashboard/setting (or your self-hosted URL)
 2. Scroll to the "API Key" section
 3. Generate or copy your API key
 
@@ -97,8 +107,9 @@ sl alias list --all
 # View alias details
 sl alias view my-alias@simplelogin.co
 
-# Toggle an alias on/off
-sl alias toggle 12345
+# Enable/disable an alias (idempotent, safe for scripts)
+sl alias enable 12345
+sl alias disable 12345
 
 # Check account status
 sl account status
@@ -106,55 +117,55 @@ sl account status
 
 ## Version
 
-Check the installed version:
-
 ```bash
 sl --version
-# sl version v0.1.0 (abc1234, 2026-01-15T10:30:00Z)
-
-# or equivalently
-sl version
+# sl version 0.2.0 (abc1234, 2026-03-26T20:00:00Z)
 ```
 
-Binaries from the [Releases](https://github.com/mexcool/simplelogin-cli/releases) page and Homebrew include the version tag, commit hash, and build date. When installed via `go install` without explicit ldflags, the Go module version (e.g. `v0.1.0`) is shown if available; otherwise it falls back to `dev`.
+Binaries from [Releases](https://github.com/mexcool/simplelogin-cli/releases) and Homebrew include the version tag, commit hash, and build date. When installed via `go install`, the Go module version is shown if available; otherwise it falls back to `dev`.
 
 ## Command Reference
+
+Most commands support `--json` and `--jq` flags for machine-readable output. Many commands have short aliases (`ls`, `rm`, `info`) for convenience.
 
 ### `sl auth` — Manage authentication
 
 | Command | Description |
 |---------|-------------|
-| `sl auth login` | Authenticate with SimpleLogin |
+| `sl auth login` | Authenticate interactively |
 | `sl auth login --key <key>` | Store API key directly |
+| `sl auth login --key <key> --url <url>` | Authenticate against a self-hosted instance |
 | `sl auth login --1password --vault <v> --item <i>` | Use 1Password integration |
 | `sl auth logout` | Remove stored credentials |
-| `sl auth status` | Show current user and masked key |
+| `sl auth status` | Show current user, key source, and API URL |
 
 ### `sl alias` — Manage email aliases
 
 | Command | Description |
 |---------|-------------|
-| `sl alias list` | List aliases (first page) |
+| `sl alias list` (alias: `ls`) | List aliases (first page) |
 | `sl alias list --all` | List all aliases |
-| `sl alias list --enabled` | List only enabled aliases |
-| `sl alias list --disabled` | List only disabled aliases |
-| `sl alias list --pinned` | List only pinned aliases |
+| `sl alias list --enabled` / `--disabled` / `--pinned` | Filter aliases |
 | `sl alias list --query <q>` | Search aliases |
-| `sl alias list --page <N>` | List specific page |
+| `sl alias view <id-or-email>` (alias: `info`) | View alias details |
 | `sl alias create --random` | Create a random alias |
-| `sl alias create --random --note <n>` | Create random alias with note |
-| `sl alias create --prefix <p>` | Create custom alias (interactive suffix) |
+| `sl alias create --random --mode word` | Create word-based random alias |
+| `sl alias create --random --mode uuid` | Create UUID-based random alias |
+| `sl alias create --random --hostname github.com` | Associate alias with a website |
 | `sl alias create --prefix <p> --suffix <N>` | Create custom alias with specific suffix |
-| `sl alias create --prefix <p> --mailbox <id>` | Create alias assigned to mailbox |
-| `sl alias view <id-or-email>` | View alias details |
-| `sl alias delete <id-or-email>` | Delete an alias |
-| `sl alias delete <id-or-email> --yes` | Delete without confirmation |
-| `sl alias toggle <id-or-email>` | Enable/disable an alias |
+| `sl alias create --prefix <p> --mailbox <id>` | Create alias assigned to mailbox(es) |
+| `sl alias options` | Show available suffixes and creation options |
+| `sl alias options --hostname github.com` | Show options tailored for a hostname |
+| `sl alias enable <id-or-email>` | Ensure alias is enabled (idempotent) |
+| `sl alias disable <id-or-email>` | Ensure alias is disabled (idempotent) |
+| `sl alias toggle <id-or-email>` | Flip alias enabled/disabled state |
 | `sl alias edit <id-or-email> --name <n>` | Set display name |
 | `sl alias edit <id-or-email> --note <n>` | Set note |
-| `sl alias edit <id-or-email> --pin` | Pin alias |
-| `sl alias edit <id-or-email> --unpin` | Unpin alias |
-| `sl alias edit <id-or-email> --mailbox <id>` | Set mailbox |
+| `sl alias edit <id-or-email> --pin` / `--unpin` | Pin/unpin alias |
+| `sl alias edit <id-or-email> --mailbox <id>` | Set mailbox(es) |
+| `sl alias delete <id-or-email>` (alias: `rm`) | Delete an alias (with confirmation) |
+| `sl alias delete <id-or-email> --yes` | Delete without confirmation |
+| `sl alias delete <id-or-email> --dry-run` | Preview what would be deleted |
 | `sl alias activity <id-or-email>` | View activity log |
 | `sl alias activity <id-or-email> --all` | View all activity |
 
@@ -162,20 +173,24 @@ Binaries from the [Releases](https://github.com/mexcool/simplelogin-cli/releases
 
 | Command | Description |
 |---------|-------------|
-| `sl contact list <alias-id-or-email>` | List contacts for an alias |
+| `sl contact list <alias-id-or-email>` (alias: `ls`) | List contacts for an alias |
 | `sl contact list <alias-id-or-email> --all` | List all contacts |
 | `sl contact add <alias-id-or-email> <email>` | Add contact (creates reverse alias) |
-| `sl contact delete <contact-id>` | Delete a contact |
-| `sl contact toggle <contact-id>` | Block/unblock a contact |
+| `sl contact delete <contact-id>` (alias: `rm`) | Delete a contact |
+| `sl contact delete <contact-id> --dry-run` | Preview deletion |
+| `sl contact block <contact-id>` | Ensure contact is blocked (idempotent) |
+| `sl contact unblock <contact-id>` | Ensure contact is unblocked (idempotent) |
+| `sl contact toggle <contact-id>` | Flip block/unblock state |
 
 ### `sl mailbox` — Manage mailboxes
 
 | Command | Description |
 |---------|-------------|
-| `sl mailbox list` | List all mailboxes |
+| `sl mailbox list` (alias: `ls`) | List all mailboxes |
 | `sl mailbox add <email>` | Add a new mailbox |
-| `sl mailbox delete <id>` | Delete a mailbox |
+| `sl mailbox delete <id>` (alias: `rm`) | Delete a mailbox |
 | `sl mailbox delete <id> --transfer-to <id>` | Delete and transfer aliases |
+| `sl mailbox delete <id> --dry-run` | Preview deletion |
 | `sl mailbox edit <id> --default` | Set as default mailbox |
 | `sl mailbox edit <id> --email <new-email>` | Change mailbox email |
 | `sl mailbox edit <id> --cancel-change` | Cancel pending email change |
@@ -184,12 +199,12 @@ Binaries from the [Releases](https://github.com/mexcool/simplelogin-cli/releases
 
 | Command | Description |
 |---------|-------------|
-| `sl domain list` | List custom domains |
-| `sl domain edit <id> --catch-all` | Enable catch-all |
-| `sl domain edit <id> --no-catch-all` | Disable catch-all |
-| `sl domain edit <id> --random-prefix` | Enable random prefix |
-| `sl domain edit <id> --no-random-prefix` | Disable random prefix |
+| `sl domain list` (alias: `ls`) | List custom domains |
+| `sl domain view <id>` | View domain details (verification, mailboxes, alias count) |
+| `sl domain edit <id> --catch-all` / `--no-catch-all` | Toggle catch-all |
+| `sl domain edit <id> --random-prefix` / `--no-random-prefix` | Toggle random prefix |
 | `sl domain edit <id> --name <n>` | Set display name |
+| `sl domain edit <id> --mailbox <id>` | Assign mailbox(es) to domain |
 | `sl domain trash <id>` | View deleted aliases |
 
 ### `sl setting` — Manage account settings
@@ -219,13 +234,31 @@ Binaries from the [Releases](https://github.com/mexcool/simplelogin-cli/releases
 | `sl export aliases` | Export aliases as CSV |
 | `sl export aliases --output <file>` | Export to file |
 
+### `sl completion` — Shell completions
+
+| Command | Description |
+|---------|-------------|
+| `sl completion bash` | Generate bash completions |
+| `sl completion zsh` | Generate zsh completions |
+| `sl completion fish` | Generate fish completions |
+| `sl completion powershell` | Generate PowerShell completions |
+
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `SIMPLELOGIN_API_KEY` | API key (highest priority) |
 | `SL_API_KEY` | API key (alternative) |
+| `SL_VERBOSE` or `SL_DEBUG` | Set to `1` to log HTTP requests to stderr |
 | `NO_COLOR` | Set to any value to disable colored output |
+
+## Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Log HTTP requests to stderr (method, URL, status, latency) |
+| `--json` | Output as JSON (available on most commands) |
+| `--jq <expr>` | Apply jq expression to JSON output |
 
 ## Output Formats
 
@@ -261,16 +294,17 @@ sl mailbox list --json --jq '.mailboxes[] | select(.default) | .email'
 
 ## Agent Usage
 
-This CLI is designed for both human and programmatic use. Every list/view command supports `--json` and `--jq` flags for machine-readable output.
+This CLI is designed for both human and programmatic use.
 
-**Progressive disclosure**: Every command has rich `--help` text with:
-- `Short`: One-line description (shown in parent help)
-- `Long`: Detailed explanation with context and behavior notes
-- `Example`: Real usage examples
+**Idempotent operations**: Use `sl alias enable`/`disable` and `sl contact block`/`unblock` instead of `toggle` — they check the current state first and are safe to call repeatedly.
 
-This makes the CLI self-documenting — agents and scripts can discover capabilities by reading help text.
+**Exit codes**: `0` for success, `1` for runtime errors, `2` for usage errors (wrong arguments/flags). Scripts can distinguish "bad invocation" from "API failure."
 
-**Piping-friendly**: Success/status messages go to stderr, data goes to stdout. This means you can safely pipe output:
+**Self-documenting errors**: Error messages include actionable guidance, e.g., "invalid contact ID: use 'sl contact list <alias>' to find IDs."
+
+**Progressive disclosure**: Every command has rich `--help` text with examples. Agents can discover capabilities by reading help text.
+
+**Piping-friendly**: Status messages go to stderr, data goes to stdout:
 
 ```bash
 # Create alias and capture just the email
@@ -280,12 +314,15 @@ NEW_ALIAS=$(sl alias create --random 2>/dev/null)
 sl export data | jq '.aliases | length'
 ```
 
+**Debugging**: Use `--verbose` or `SL_VERBOSE=1` to see HTTP requests without exposing API keys.
+
 ## Configuration
 
 Config file location: `$XDG_CONFIG_HOME/simplelogin/config.yml` (defaults to `~/.config/simplelogin/config.yml`)
 
 ```yaml
 api_key: sl_xxxxxxxxxxxxx
+api_base: https://sl.example.com  # only for self-hosted instances
 # or for 1Password:
 op_ref: op://Personal/SimpleLogin API Key/credential
 ```
@@ -294,7 +331,7 @@ op_ref: op://Personal/SimpleLogin API Key/credential
 
 Other community-built SimpleLogin CLIs:
 
-- [KennethWussmann/simplelogin-cli](https://github.com/KennethWussmann/simplelogin-cli) — TypeScript/oclif, includes a separate SDK library. Supports self-hosted instances.
+- [KennethWussmann/simplelogin-cli](https://github.com/KennethWussmann/simplelogin-cli) — TypeScript/oclif, includes a separate SDK library.
 - [joedemcher/simplelogin-cli](https://github.com/joedemcher/simplelogin-cli) — Python/docopt, available on PyPI. Rich interactive prompts with questionary.
 
 ## Disclaimer
