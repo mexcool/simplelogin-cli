@@ -318,10 +318,10 @@ func TestTruncate_EdgeCases(t *testing.T) {
 		want   string
 		panics bool
 	}{
-		{"maxLen=0", "hello", 0, "", true},
-		{"maxLen=1", "hello", 1, "", true},
-		{"maxLen=2", "hello", 2, "", true},
-		{"maxLen=3", "hello", 3, "...", false},
+		{"maxLen=0", "hello", 0, "", false},
+		{"maxLen=1", "hello", 1, "h", false},
+		{"maxLen=2", "hello", 2, "he", false},
+		{"maxLen=3", "hello", 3, "hel", false},
 		{"maxLen=5_exact_length", "hello", 5, "hello", false},
 		{"maxLen=10_longer_than_string", "hello", 10, "hello", false},
 		{"empty_string_maxLen=5", "", 5, "", false},
