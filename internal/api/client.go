@@ -392,11 +392,19 @@ type AliasOptions struct {
 type SuffixOption struct {
 	Suffix       string `json:"suffix"`
 	SignedSuffix string `json:"signed_suffix"`
+	IsCustom     bool   `json:"is_custom"`
+	IsPremium    bool   `json:"is_premium"`
 }
 
 // GetAliasOptions retrieves options for creating a custom alias.
-func (c *Client) GetAliasOptions() (*AliasOptions, []byte, error) {
-	body, status, err := c.do("GET", "/api/v5/alias/options", nil)
+// When hostname is non-empty it is passed as a query parameter so the
+// API can tailor the response (e.g. suggest a prefix based on the site).
+func (c *Client) GetAliasOptions(hostname string) (*AliasOptions, []byte, error) {
+	path := "/api/v5/alias/options"
+	if hostname != "" {
+		path += "?hostname=" + url.QueryEscape(hostname)
+	}
+	body, status, err := c.do("GET", path, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get alias options: %w", err)
 	}

@@ -99,7 +99,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get available options
-	opts, _, err := client.GetAliasOptions()
+	opts, _, err := client.GetAliasOptions("")
 	if err != nil {
 		return err
 	}

@@ -29,4 +29,5 @@ func init() {
 	Cmd.AddCommand(disableCmd)
 	Cmd.AddCommand(editCmd)
 	Cmd.AddCommand(activityCmd)
+	Cmd.AddCommand(optionsCmd)
 }
