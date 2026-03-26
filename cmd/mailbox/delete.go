@@ -58,12 +58,11 @@ func init() {
 func runDelete(cmd *cobra.Command, args []string) error {
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid mailbox ID: %s", args[0])
+		return fmt.Errorf("invalid mailbox ID %q: expected a numeric ID (use 'sl mailbox list' to find IDs)", args[0])
 	}
 
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -72,8 +71,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	if deleteDryRun {
 		mailboxes, _, err := client.ListMailboxes()
 		if err != nil {
-			output.PrintError("Failed to fetch mailboxes for preview: %v", err)
-			return err
+			return fmt.Errorf("failed to fetch mailboxes for preview: %w", err)
 		}
 		var found *api.Mailbox
 		for i := range mailboxes {
@@ -83,7 +81,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if found == nil {
-			return fmt.Errorf("mailbox not found: %d", id)
+			return fmt.Errorf("mailbox %d not found (use 'sl mailbox list' to see available mailboxes)", id)
 		}
 		if deleteJSON {
 			data, _ := json.Marshal(found)
@@ -112,7 +110,6 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := client.DeleteMailbox(id, transferTo); err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

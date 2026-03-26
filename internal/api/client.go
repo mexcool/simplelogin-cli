@@ -10,20 +10,29 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
 
 const BaseURL = "https://app.simplelogin.io"
 
+// Verbose controls whether HTTP request debug logging is enabled.
+// When true, the client logs method, URL, status code, and latency
+// to stderr for every request. It is set by the --verbose flag or
+// the SL_VERBOSE / SL_DEBUG environment variables.
+var Verbose bool
+
 // Client is the SimpleLogin API client.
 type Client struct {
 	apiKey     string
 	httpClient *http.Client
 	baseURL    string
+	verbose    bool
 }
 
 // NewClient creates a new API client with the given API key.
+// It inherits the current value of the package-level Verbose flag.
 func NewClient(apiKey string) *Client {
 	return &Client{
 		apiKey: apiKey,
@@ -31,6 +40,7 @@ func NewClient(apiKey string) *Client {
 			Timeout: 30 * time.Second,
 		},
 		baseURL: BaseURL,
+		verbose: Verbose,
 	}
 }
 
@@ -112,7 +122,8 @@ func (c *Client) do(method, path string, body interface{}) ([]byte, int, error) 
 		reqBody = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequest(method, c.baseURL+path, reqBody)
+	fullURL := c.baseURL + path
+	req, err := http.NewRequest(method, fullURL, reqBody)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -120,11 +131,20 @@ func (c *Client) do(method, path string, body interface{}) ([]byte, int, error) 
 	req.Header.Set("Authentication", c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
+	start := time.Now()
 	resp, err := c.httpClient.Do(req)
+	elapsed := time.Since(start)
 	if err != nil {
+		if c.verbose {
+			fmt.Fprintf(os.Stderr, "DEBUG: %s %s → error (%dms)\n", method, fullURL, elapsed.Milliseconds())
+		}
 		return nil, 0, wrapNetworkError(err)
 	}
 	defer resp.Body.Close()
+
+	if c.verbose {
+		fmt.Fprintf(os.Stderr, "DEBUG: %s %s → %d (%dms)\n", method, fullURL, resp.StatusCode, elapsed.Milliseconds())
+	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

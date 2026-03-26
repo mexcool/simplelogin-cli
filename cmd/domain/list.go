@@ -41,14 +41,12 @@ func init() {
 func runList(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	domains, rawJSON, err := client.ListCustomDomains()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

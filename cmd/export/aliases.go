@@ -34,21 +34,18 @@ func init() {
 func runAliases(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	data, err := client.ExportAliases()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	if aliasesOutput != "" {
 		if err := os.WriteFile(aliasesOutput, data, 0600); err != nil {
-			output.PrintError("Failed to write file: %v", err)
-			return err
+			return fmt.Errorf("failed to write file %s: %w", aliasesOutput, err)
 		}
 		output.PrintSuccess("Aliases exported to %s", aliasesOutput)
 		return nil

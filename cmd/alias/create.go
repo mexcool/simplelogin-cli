@@ -65,7 +65,6 @@ func init() {
 func runCreate(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -74,7 +73,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if createRandom {
 		alias, rawJSON, err := client.CreateRandomAlias(createNote)
 		if err != nil {
-			output.PrintError("%v", err)
 			return err
 		}
 
@@ -95,13 +93,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Get available options
 	opts, _, err := client.GetAliasOptions()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	if len(opts.Suffixes) == 0 {
-		output.PrintError("No suffixes available. You may need a premium account.")
-		return fmt.Errorf("no suffixes available")
+		return fmt.Errorf("no suffixes available; you may need a premium account")
 	}
 
 	var selectedSuffix api.SuffixOption
@@ -112,9 +108,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			for i, s := range opts.Suffixes {
 				hints = append(hints, fmt.Sprintf("%d: %s%s", i, createPrefix, s.Suffix))
 			}
-			err := fmt.Errorf("--suffix is required in non-interactive mode. Available suffixes:\n  %s", strings.Join(hints, "\n  "))
-			output.PrintError("%v", err)
-			return err
+			return fmt.Errorf("--suffix is required in non-interactive mode; available suffixes:\n  %s", strings.Join(hints, "\n  "))
 		}
 		// Interactive suffix selection
 		fmt.Fprintln(os.Stderr, "Available suffixes:")
@@ -126,7 +120,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Scanln(&input)
 		idx, err := strconv.Atoi(strings.TrimSpace(input))
 		if err != nil || idx < 0 || idx >= len(opts.Suffixes) {
-			return fmt.Errorf("invalid suffix selection")
+			return fmt.Errorf("invalid suffix selection; enter a number between 0 and %d", len(opts.Suffixes)-1)
 		}
 		selectedSuffix = opts.Suffixes[idx]
 	} else {
@@ -143,8 +137,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		// Use default mailbox
 		mailboxes, _, err := client.ListMailboxes()
 		if err != nil {
-			output.PrintError("Failed to get mailboxes: %v", err)
-			return err
+			return fmt.Errorf("failed to get mailboxes: %w", err)
 		}
 		for _, m := range mailboxes {
 			if m.Default {
@@ -167,7 +160,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	alias, rawJSON, err := client.CreateCustomAlias(req)
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

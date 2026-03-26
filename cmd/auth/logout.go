@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"fmt"
+
 	"github.com/mexcool/simplelogin-cli/internal/api"
 	intauth "github.com/mexcool/simplelogin-cli/internal/auth"
 	"github.com/mexcool/simplelogin-cli/internal/output"
@@ -32,8 +34,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 
 	// Clear local config
 	if err := intauth.ClearConfig(); err != nil {
-		output.PrintError("Failed to clear config: %v", err)
-		return err
+		return fmt.Errorf("failed to clear config: %w", err)
 	}
 
 	output.PrintSuccess("Logged out successfully")

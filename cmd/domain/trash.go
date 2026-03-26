@@ -41,19 +41,17 @@ func init() {
 func runTrash(cmd *cobra.Command, args []string) error {
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid domain ID: %s", args[0])
+		return fmt.Errorf("invalid domain ID %q: expected a numeric ID (use 'sl domain list' to find IDs)", args[0])
 	}
 
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	aliases, rawJSON, err := client.GetDomainTrash(id)
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

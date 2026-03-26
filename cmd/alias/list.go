@@ -65,7 +65,6 @@ func init() {
 func runList(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -74,7 +73,6 @@ func runList(cmd *cobra.Command, args []string) error {
 	if listAll {
 		aliases, err := client.ListAllAliases(listPinned, listDisabled, listEnabled, listQuery)
 		if err != nil {
-			output.PrintError("%v", err)
 			return err
 		}
 
@@ -93,7 +91,6 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	aliases, rawJSON, err := client.ListAliases(listPage-1, listPinned, listDisabled, listEnabled, listQuery)
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
