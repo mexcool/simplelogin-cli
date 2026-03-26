@@ -290,6 +290,13 @@ api_key: sl_xxxxxxxxxxxxx
 op_ref: op://Personal/SimpleLogin API Key/credential
 ```
 
+## Related Projects
+
+Other community-built SimpleLogin CLIs:
+
+- [KennethWussmann/simplelogin-cli](https://github.com/KennethWussmann/simplelogin-cli) — TypeScript/oclif, includes a separate SDK library. Supports self-hosted instances.
+- [joedemcher/simplelogin-cli](https://github.com/joedemcher/simplelogin-cli) — Python/docopt, available on PyPI. Rich interactive prompts with questionary.
+
 ## Disclaimer
 
 This is an unofficial, community-developed CLI tool and is not affiliated with, endorsed by, or supported by SimpleLogin or Proton AG. SimpleLogin is a trademark of Proton AG. Please direct any issues with this tool to [this repository's issue tracker](https://github.com/mexcool/simplelogin-cli/issues), not to SimpleLogin support.
