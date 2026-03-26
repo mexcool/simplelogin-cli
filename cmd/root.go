@@ -17,10 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	version = "dev"
-	verbose bool
-)
+var verbose bool
 
 var rootCmd = &cobra.Command{
 	Use:   "sl",
@@ -52,7 +49,6 @@ Output:
 // SetVersionInfo sets the version string shown by --version, including
 // optional build metadata (commit hash and build date).
 func SetVersionInfo(v, commit, date string) {
-	version = v
 	display := v
 	if commit != "" || date != "" {
 		parts := make([]string, 0, 2)
@@ -81,7 +77,7 @@ var completionCmd = &cobra.Command{
 	Use:       "completion [bash|zsh|fish|powershell]",
 	Short:     "Generate shell completion scripts",
 	ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
-	Args:      cobra.ExactValidArgs(1),
+	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	Example: `  # Bash (add to ~/.bashrc)
   source <(sl completion bash)
 

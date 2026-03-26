@@ -335,7 +335,7 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 		}
 		w.WriteHeader(201)
 		alias := Alias{ID: 100, Email: "random123@sl.local"}
-		json.NewEncoder(w).Encode(alias)
+		_ = json.NewEncoder(w).Encode(alias)
 	}))
 	defer srv.Close()
 
@@ -359,7 +359,7 @@ func TestClient_GetStats(t *testing.T) {
 		}
 		stats := Stats{NbAlias: 10, NbBlock: 5, NbForward: 100, NbReply: 3}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(stats)
+		_ = json.NewEncoder(w).Encode(stats)
 	}))
 	defer srv.Close()
 
@@ -692,7 +692,7 @@ func TestClient_CreateCustomAlias(t *testing.T) {
 
 		w.WriteHeader(201)
 		alias := Alias{ID: 55, Email: "my-prefix.abcdef@sl.local"}
-		json.NewEncoder(w).Encode(alias)
+		_ = json.NewEncoder(w).Encode(alias)
 	}))
 	defer srv.Close()
 
