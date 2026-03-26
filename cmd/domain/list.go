@@ -11,8 +11,9 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List custom domains",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List custom domains",
 	Long: `List all custom domains registered with your SimpleLogin account.
 
 Shows domain name, verification status, catch-all status, number of aliases,

@@ -11,8 +11,9 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List mailboxes",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List mailboxes",
 	Long: `List all mailboxes associated with your SimpleLogin account.
 
 Shows the mailbox ID, email, verification status, default status,
