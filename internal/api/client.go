@@ -426,6 +426,7 @@ type CreateCustomAliasRequest struct {
 	MailboxIDs   []int  `json:"mailbox_ids"`
 	Note         string `json:"note,omitempty"`
 	Name         string `json:"name,omitempty"`
+	Hostname     string `json:"hostname,omitempty"`
 }
 
 // CreateCustomAlias creates a custom alias.
@@ -451,12 +452,16 @@ type CreateRandomAliasRequest struct {
 }
 
 // CreateRandomAlias creates a random alias.
-func (c *Client) CreateRandomAlias(note string) (*Alias, []byte, error) {
+func (c *Client) CreateRandomAlias(note, hostname string) (*Alias, []byte, error) {
 	var reqBody interface{}
 	if note != "" {
 		reqBody = &CreateRandomAliasRequest{Note: note}
 	}
-	body, status, err := c.do("POST", "/api/alias/random/new", reqBody)
+	path := "/api/alias/random/new"
+	if hostname != "" {
+		path += "?hostname=" + url.QueryEscape(hostname)
+	}
+	body, status, err := c.do("POST", path, reqBody)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create random alias: %w", err)
 	}

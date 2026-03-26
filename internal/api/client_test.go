@@ -339,7 +339,7 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv)
-	alias, _, err := c.CreateRandomAlias("test note")
+	alias, _, err := c.CreateRandomAlias("test note", "")
 	if err != nil {
 		t.Fatalf("CreateRandomAlias: %v", err)
 	}
