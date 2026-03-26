@@ -16,6 +16,9 @@ make man            # Generate man pages via cmd/gen-man
 
 Run a single test: `go test -run TestHandleError_401 ./internal/api/`
 Run tests with race detector (as CI does): `go test -race ./...`
+Release: `git tag vX.Y.Z && git push origin vX.Y.Z` — triggers goreleaser (builds, checksums, homebrew tap update).
+
+Branch protection is enabled on `main` — all changes go through PRs with CI passing. Repo admins can bypass.
 
 ## Architecture
 
@@ -57,20 +60,13 @@ Client construction always looks like: `client := api.NewClient(key, auth.GetAPI
 3. 1Password CLI (`op read`) if `op_ref` is configured
 4. `api_key` from config file
 
-### Stdout vs stderr separation (critical)
-
-- **stdout**: machine-readable data only — JSON output, created alias email, table listings
-- **stderr**: status messages (`PrintSuccess`/`PrintWarning`/`PrintError`), prompts, verbose logging
-- This separation enables piping: `NEW_ALIAS=$(sl alias create --random 2>/dev/null)`
-
 ## Agentic-First Design Principles
 
-This CLI is designed for agent and script consumption first, human use second. When adding or modifying commands, follow these principles:
+This CLI is designed for agent and script consumption first, human use second.
 
-### Every command that returns data must support `--json` and `--jq`
+**Stdout vs stderr separation is critical.** stdout = machine-readable data only (JSON, table, created alias email). stderr = status messages, prompts, verbose logging. This enables `NEW_ALIAS=$(sl alias create --random 2>/dev/null)`.
 
-These are per-command flags (not global). The pattern:
-
+**Every command that returns data must support `--json` and `--jq`** (per-command flags, not global):
 ```go
 if createJSON || createJQ != "" {
     if createJQ != "" {
@@ -80,30 +76,26 @@ if createJSON || createJQ != "" {
 }
 ```
 
-### Errors must be actionable
+**Errors must be actionable.** Bad: `"invalid ID"`. Good: `"invalid contact ID %q: expected a numeric ID (use 'sl contact list <alias>' to find IDs)"`.
 
-Bad: `"invalid ID"`. Good: `"invalid contact ID %q: expected a numeric ID (use 'sl contact list <alias>' to find IDs)"`. An agent reading the error should know exactly what to do next.
+**Non-interactive by default.** `IsInteractive()` gates all prompts. `ConfirmAction()` returns `false` in non-TTY mode. Every interactive prompt must have a flag alternative (`--key`, `--suffix N`, `--yes`). Cancelled operations return an error (non-zero exit), not nil.
 
-### Non-interactive by default
+**Prefer idempotent operations over toggles.** `enable`/`disable` and `block`/`unblock` check current state first. Agents should use these instead of `toggle`.
 
-- `IsInteractive()` gates all prompts (checks stdin TTY)
-- `ConfirmAction()` returns `false` in non-interactive mode — destructive ops require `--yes` in scripts
-- Interactive prompts must always have a flag alternative (`--key`, `--suffix N`, `--yes`)
-- Cancelled operations return an error (exit non-zero), not nil
+**Exit codes:** `0` success, `1` runtime error, `2` usage error (POSIX EX_USAGE — lets agents distinguish bad invocation from API failure).
 
-### Prefer idempotent operations over toggles
+**Self-documenting via `--help`.** Every command must have `Short`, `Long`, and `Example` fields. Delete commands must support `--yes` to skip confirmation and `--dry-run` to preview.
 
-`enable`/`disable` and `block`/`unblock` check current state first and are safe to call repeatedly. Agents should use these instead of `toggle`.
+## Adding a New Command
 
-### Exit codes matter
-
-- `0` — success
-- `1` — runtime error (API failure, network error)
-- `2` — usage error (wrong args, invalid flags) — lets agents distinguish "bad invocation" from "API down"
-
-### Self-documenting via `--help`
-
-Every command must have `Short`, `Long`, and `Example` fields. Agents discover capabilities by reading help text rather than documentation.
+1. Create `cmd/<resource>/<verb>.go` — define `var xxxCmd` with `Use`, `Short`, `Long`, `Example`, `Args`, `RunE`
+2. Define flag vars at package level, register them in `init()`
+3. In `RunE`: call `auth.GetAPIKey()`, then `api.NewClient(key, auth.GetAPIBase())`
+4. Add `--json` (bool) and `--jq` (string) flags. Branch output on them.
+5. If the API method doesn't exist yet, add it to `internal/api/client.go` returning `(typed, rawJSON, error)`
+6. Register the command in `cmd/<resource>/<resource>.go` via `Cmd.AddCommand(xxxCmd)`
+7. Add an `Aliases` field if a short alias makes sense (`ls`, `rm`, `info`)
+8. Run `go build ./...`, `go test ./...`, `go vet ./...`
 
 ## Non-Obvious Things
 
