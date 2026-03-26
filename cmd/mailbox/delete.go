@@ -13,8 +13,9 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <mailbox-id>",
-	Short: "Delete a mailbox",
+	Use:     "delete <mailbox-id>",
+	Aliases: []string{"rm"},
+	Short:   "Delete a mailbox",
 	Long: `Delete a mailbox from your SimpleLogin account.
 
 You cannot delete the default mailbox. If the mailbox has aliases,
@@ -71,7 +72,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 
 	if deleteDryRun {
 		mailboxes, _, err := client.ListMailboxes()

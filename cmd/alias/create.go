@@ -28,6 +28,12 @@ Optionally attach a note, display name, or assign to specific mailboxes.`,
 	Example: `  # Create a random alias
   sl alias create --random
 
+  # Create a word-based random alias
+  sl alias create --random --mode word
+
+  # Create a UUID-based random alias
+  sl alias create --random --mode uuid
+
   # Create a random alias with a note
   sl alias create --random --note "Used for newsletters"
 
@@ -41,19 +47,24 @@ Optionally attach a note, display name, or assign to specific mailboxes.`,
   sl alias create --random --json
 
   # Filter JSON output with jq
-  sl alias create --random --json --jq '.email'`,
+  sl alias create --random --json --jq '.email'
+
+  # Create a random alias associated with a hostname
+  sl alias create --random --hostname example.com`,
 	RunE: runCreate,
 }
 
 var (
-	createPrefix  string
-	createRandom  bool
-	createSuffix  string
-	createMailbox []int
-	createNote    string
-	createName    string
-	createJSON    bool
-	createJQ      string
+	createPrefix   string
+	createRandom   bool
+	createSuffix   string
+	createMailbox  []int
+	createNote     string
+	createName     string
+	createHostname string
+	createMode     string
+	createJSON     bool
+	createJQ       string
 )
 
 func init() {
@@ -63,6 +74,8 @@ func init() {
 	createCmd.Flags().IntSliceVar(&createMailbox, "mailbox", nil, "Mailbox IDs to assign")
 	createCmd.Flags().StringVar(&createNote, "note", "", "Note for the alias")
 	createCmd.Flags().StringVar(&createName, "name", "", "Display name for the alias")
+	createCmd.Flags().StringVar(&createHostname, "hostname", "", "Associate alias with a hostname/website")
+	createCmd.Flags().StringVar(&createMode, "mode", "", "Random alias generation mode: uuid or word")
 	createCmd.Flags().BoolVar(&createJSON, "json", false, "Output as JSON")
 	createCmd.Flags().StringVar(&createJQ, "jq", "", "Apply jq expression to JSON output")
 }
@@ -73,10 +86,17 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
+
+	if createMode != "" && createMode != "uuid" && createMode != "word" {
+		return fmt.Errorf("--mode must be 'uuid' or 'word'")
+	}
+	if createMode != "" && !createRandom {
+		return fmt.Errorf("--mode can only be used with --random")
+	}
 
 	if createRandom {
-		alias, rawJSON, err := client.CreateRandomAlias(createNote)
+		alias, rawJSON, err := client.CreateRandomAlias(createNote, createHostname, createMode)
 		if err != nil {
 			return err
 		}
@@ -99,7 +119,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get available options
-	opts, _, err := client.GetAliasOptions()
+	opts, _, err := client.GetAliasOptions(createHostname)
 	if err != nil {
 		return err
 	}
@@ -164,6 +184,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		MailboxIDs:   mailboxIDs,
 		Note:         createNote,
 		Name:         createName,
+		Hostname:     createHostname,
 	}
 
 	alias, rawJSON, err := client.CreateCustomAlias(req)

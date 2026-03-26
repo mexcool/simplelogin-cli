@@ -52,7 +52,7 @@ func setAliasState(idOrEmail string, wantEnabled bool, jsonFlag bool, jqExpr str
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	id, err := client.ResolveAliasID(idOrEmail)
 	if err != nil {
 		return err

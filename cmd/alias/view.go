@@ -12,8 +12,9 @@ import (
 )
 
 var viewCmd = &cobra.Command{
-	Use:   "view <alias-id-or-email>",
-	Short: "View alias details",
+	Use:     "view <alias-id-or-email>",
+	Aliases: []string{"info"},
+	Short:   "View alias details",
 	Long: `Display detailed information about a specific alias.
 
 Accepts either a numeric alias ID or the full alias email address.
@@ -52,7 +53,7 @@ func runView(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	id, err := client.ResolveAliasID(args[0])
 	if err != nil {
 		return err

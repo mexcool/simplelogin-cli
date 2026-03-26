@@ -40,7 +40,7 @@ func runData(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	data, err := client.ExportData()
 	if err != nil {
 		return err

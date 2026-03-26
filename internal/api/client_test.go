@@ -18,8 +18,7 @@ import (
 // newTestClient returns an API client pointed at the given httptest server.
 func newTestClient(t *testing.T, server *httptest.Server) *Client {
 	t.Helper()
-	c := NewClient("test-api-key")
-	c.baseURL = server.URL
+	c := NewClient("test-api-key", server.URL)
 	return c
 }
 
@@ -109,7 +108,7 @@ func TestHandleError_500_InvalidJSON(t *testing.T) {
 
 func TestResolveAliasID_IntegerInput(t *testing.T) {
 	// Should parse directly without making any HTTP request
-	c := NewClient("unused")
+	c := NewClient("unused", "")
 	id, err := c.ResolveAliasID("12345")
 	if err != nil {
 		t.Fatalf("ResolveAliasID('12345'): %v", err)
@@ -340,7 +339,7 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv)
-	alias, _, err := c.CreateRandomAlias("test note")
+	alias, _, err := c.CreateRandomAlias("test note", "", "")
 	if err != nil {
 		t.Fatalf("CreateRandomAlias: %v", err)
 	}
@@ -349,6 +348,59 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 	}
 	if alias.Email != "random123@sl.local" {
 		t.Errorf("expected email random123@sl.local, got %q", alias.Email)
+	}
+}
+
+func TestClient_CreateRandomAlias_WithHostname(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hostname := r.URL.Query().Get("hostname")
+		if hostname != "github.com" {
+			t.Errorf("expected hostname=github.com, got %q", hostname)
+		}
+		w.WriteHeader(201)
+		alias := Alias{ID: 102, Email: "gh-random@sl.local"}
+		_ = json.NewEncoder(w).Encode(alias)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	alias, _, err := c.CreateRandomAlias("", "github.com", "")
+	if err != nil {
+		t.Fatalf("CreateRandomAlias with hostname: %v", err)
+	}
+	if alias.ID != 102 {
+		t.Errorf("expected ID 102, got %d", alias.ID)
+	}
+}
+
+func TestClient_CreateRandomAlias_WithMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/alias/random/new" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		mode := r.URL.Query().Get("mode")
+		if mode != "word" {
+			t.Errorf("expected mode=word, got %q", mode)
+		}
+		w.WriteHeader(201)
+		alias := Alias{ID: 101, Email: "word-random@sl.local"}
+		_ = json.NewEncoder(w).Encode(alias)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	alias, _, err := c.CreateRandomAlias("", "", "word")
+	if err != nil {
+		t.Fatalf("CreateRandomAlias with mode: %v", err)
+	}
+	if alias.ID != 101 {
+		t.Errorf("expected ID 101, got %d", alias.ID)
+	}
+	if alias.Email != "word-random@sl.local" {
+		t.Errorf("expected email word-random@sl.local, got %q", alias.Email)
 	}
 }
 
@@ -508,7 +560,7 @@ func TestClient_ListAllAliases_Pagination(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewClient_Defaults(t *testing.T) {
-	c := NewClient("my-key")
+	c := NewClient("my-key", "")
 	if c.apiKey != "my-key" {
 		t.Errorf("apiKey = %q, want %q", c.apiKey, "my-key")
 	}
@@ -517,6 +569,13 @@ func TestNewClient_Defaults(t *testing.T) {
 	}
 	if c.httpClient == nil {
 		t.Error("httpClient should not be nil")
+	}
+}
+
+func TestNewClient_CustomBaseURL(t *testing.T) {
+	c := NewClient("my-key", "https://sl.example.com")
+	if c.baseURL != "https://sl.example.com" {
+		t.Errorf("baseURL = %q, want %q", c.baseURL, "https://sl.example.com")
 	}
 }
 
@@ -539,8 +598,7 @@ func TestClient_AuthenticationHeader(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient("secret-key")
-	c.baseURL = srv.URL
+	c := NewClient("secret-key", srv.URL)
 	_, _, err := c.GetStats()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -566,7 +624,7 @@ func TestWrapNetworkError_DNS(t *testing.T) {
 	}
 	wrapped := wrapNetworkError(orig)
 	if !strings.Contains(wrapped.Error(), "could not resolve app.simplelogin.io") {
-		t.Errorf("expected DNS error message, got: %v", wrapped)
+		t.Errorf("expected DNS error message containing hostname, got: %v", wrapped)
 	}
 	// Original error must be preserved in the chain
 	var dnsErr *net.DNSError

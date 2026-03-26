@@ -47,7 +47,7 @@ func runToggle(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	id, err := client.ResolveAliasID(args[0])
 	if err != nil {
 		return err
