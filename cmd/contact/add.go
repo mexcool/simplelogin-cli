@@ -28,15 +28,22 @@ revealing your real email address.`,
   sl contact add my-alias@simplelogin.co friend@example.com
 
   # Get reverse alias as JSON
-  sl contact add 12345 friend@example.com --json`,
+  sl contact add 12345 friend@example.com --json
+
+  # Filter JSON output with jq
+  sl contact add 12345 friend@example.com --json --jq '.reverse_alias_address'`,
 	Args: cobra.ExactArgs(2),
 	RunE: runAdd,
 }
 
-var addJSON bool
+var (
+	addJSON bool
+	addJQ   string
+)
 
 func init() {
 	addCmd.Flags().BoolVar(&addJSON, "json", false, "Output as JSON")
+	addCmd.Flags().StringVar(&addJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
@@ -56,7 +63,10 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if addJSON {
+	if addJSON || addJQ != "" {
+		if addJQ != "" {
+			return output.PrintJQ(rawJSON, addJQ)
+		}
 		return output.PrintJSON(rawJSON)
 	}
 

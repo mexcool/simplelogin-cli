@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -19,8 +20,24 @@ user's name and email, and the source of the API key.
 This is useful to verify which account is active and how the CLI is
 obtaining the API key (environment variable, 1Password, or config file).`,
 	Example: `  # Check authentication status
-  sl auth status`,
+  sl auth status
+
+  # Output as JSON
+  sl auth status --json
+
+  # Filter JSON output with jq
+  sl auth status --json --jq '.email'`,
 	RunE: runStatus,
+}
+
+var (
+	statusJSON bool
+	statusJQ   string
+)
+
+func init() {
+	statusCmd.Flags().BoolVar(&statusJSON, "json", false, "Output as JSON")
+	statusCmd.Flags().StringVar(&statusJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -43,6 +60,21 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	info, _, err := client.GetUserInfo()
 	if err != nil {
 		return fmt.Errorf("failed to validate API key: %w", err)
+	}
+
+	if statusJSON || statusJQ != "" {
+		data := make(map[string]interface{})
+		data["name"] = info.Name
+		data["email"] = info.Email
+		data["is_premium"] = info.IsPremium
+		data["in_trial"] = info.InTrial
+		data["key_source"] = source
+		data["key"] = intauth.MaskKey(key)
+		jsonBytes, _ := json.Marshal(data)
+		if statusJQ != "" {
+			return output.PrintJQ(jsonBytes, statusJQ)
+		}
+		return output.PrintJSON(jsonBytes)
 	}
 
 	fmt.Fprintf(os.Stderr, "Authenticated as: %s (%s)\n", output.Bold.Sprint(info.Name), info.Email)
