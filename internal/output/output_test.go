@@ -70,6 +70,10 @@ func TestTruncate(t *testing.T) {
 		{"hello world, this is long", 10, "hello w..."},
 		{"abc", 3, "abc"},
 		{"abcdef", 5, "ab..."},
+		{"hello", 0, ""},
+		{"hello", 1, "h"},
+		{"hello", 2, "he"},
+		{"hello", 3, "hel"},
 	}
 	for _, tt := range tests {
 		got := Truncate(tt.input, tt.maxLen)

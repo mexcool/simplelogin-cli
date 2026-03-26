@@ -81,8 +81,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	if !deleteYes {
 		if !output.ConfirmAction("Delete alias " + args[0] + "?") {
-			output.PrintWarning("Cancelled")
-			return nil
+			return fmt.Errorf("operation cancelled")
 		}
 	}
 
