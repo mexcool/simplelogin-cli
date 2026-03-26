@@ -1,5 +1,7 @@
 # SimpleLogin CLI (`sl`)
 
+[![CI](https://github.com/mexcool/simplelogin-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/mexcool/simplelogin-cli/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/mexcool/simplelogin-cli)](https://github.com/mexcool/simplelogin-cli/releases/latest)
 [![Go version](https://img.shields.io/badge/go-1.24-blue?logo=go)](https://golang.org/doc/go1.24)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -19,16 +21,6 @@ brew install sl
 ```bash
 go install github.com/mexcool/simplelogin-cli/cmd/sl@latest
 ```
-
-> **Note:** `go install` places the binary in `$GOPATH/bin` (or `$HOME/go/bin`) under the name `simplelogin-cli`, not `sl`. Rename it or create an alias so the examples in this README work as written:
->
-> ```bash
-> # Option A — rename the binary
-> mv "$(go env GOPATH)/bin/simplelogin-cli" "$(go env GOPATH)/bin/sl"
->
-> # Option B — shell alias (add to ~/.bashrc or ~/.zshrc)
-> alias sl='simplelogin-cli'
-> ```
 
 ### GitHub Releases
 
