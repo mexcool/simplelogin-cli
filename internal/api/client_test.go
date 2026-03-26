@@ -1,10 +1,16 @@
 package api
 
 import (
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -537,5 +543,418 @@ func TestClient_AuthenticationHeader(t *testing.T) {
 	_, _, err := c.GetStats()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// wrapNetworkError
+// ---------------------------------------------------------------------------
+
+// timeoutErr is a helper that satisfies net.Error with Timeout() == true.
+type timeoutErr struct{}
+
+func (timeoutErr) Error() string   { return "i/o timeout" }
+func (timeoutErr) Timeout() bool   { return true }
+func (timeoutErr) Temporary() bool { return false }
+
+func TestWrapNetworkError_DNS(t *testing.T) {
+	orig := &url.Error{
+		Op:  "Get",
+		URL: "https://app.simplelogin.io",
+		Err: &net.DNSError{Name: "app.simplelogin.io", Err: "no such host"},
+	}
+	wrapped := wrapNetworkError(orig)
+	if !strings.Contains(wrapped.Error(), "could not resolve app.simplelogin.io") {
+		t.Errorf("expected DNS error message, got: %v", wrapped)
+	}
+	// Original error must be preserved in the chain
+	var dnsErr *net.DNSError
+	if !errors.As(wrapped, &dnsErr) {
+		t.Error("original *net.DNSError should be preserved in the error chain")
+	}
+}
+
+func TestWrapNetworkError_ConnectionRefused(t *testing.T) {
+	orig := &net.OpError{
+		Op:  "dial",
+		Net: "tcp",
+		Err: &os.SyscallError{Syscall: "connect", Err: fmt.Errorf("connection refused")},
+	}
+	wrapped := wrapNetworkError(orig)
+	if !strings.Contains(wrapped.Error(), "could not connect to SimpleLogin API") {
+		t.Errorf("expected connection refused message, got: %v", wrapped)
+	}
+	var opErr *net.OpError
+	if !errors.As(wrapped, &opErr) {
+		t.Error("original *net.OpError should be preserved in the error chain")
+	}
+}
+
+func TestWrapNetworkError_Timeout_OpError(t *testing.T) {
+	orig := &net.OpError{
+		Op:  "read",
+		Net: "tcp",
+		Err: timeoutErr{},
+	}
+	wrapped := wrapNetworkError(orig)
+	if !strings.Contains(wrapped.Error(), "request timed out") {
+		t.Errorf("expected timeout message, got: %v", wrapped)
+	}
+	var opErr *net.OpError
+	if !errors.As(wrapped, &opErr) {
+		t.Error("original *net.OpError should be preserved in the error chain")
+	}
+}
+
+func TestWrapNetworkError_TLS_RemoteError(t *testing.T) {
+	orig := &net.OpError{
+		Op:  "remote error",
+		Net: "tcp",
+		Err: fmt.Errorf("tls: handshake failure"),
+	}
+	wrapped := wrapNetworkError(orig)
+	if !strings.Contains(wrapped.Error(), "TLS handshake failed") {
+		t.Errorf("expected TLS error message, got: %v", wrapped)
+	}
+	var opErr *net.OpError
+	if !errors.As(wrapped, &opErr) {
+		t.Error("original *net.OpError should be preserved in the error chain")
+	}
+}
+
+func TestWrapNetworkError_TLS_RecordHeaderError(t *testing.T) {
+	orig := &net.OpError{
+		Op:  "read",
+		Net: "tcp",
+		Err: &tls.RecordHeaderError{
+			Msg: "first record does not look like a TLS handshake",
+		},
+	}
+	wrapped := wrapNetworkError(orig)
+	if !strings.Contains(wrapped.Error(), "TLS handshake failed") {
+		t.Errorf("expected TLS error message, got: %v", wrapped)
+	}
+}
+
+func TestWrapNetworkError_Timeout_URLError(t *testing.T) {
+	orig := &url.Error{
+		Op:  "Get",
+		URL: "https://app.simplelogin.io",
+		Err: timeoutErr{},
+	}
+	wrapped := wrapNetworkError(orig)
+	if !strings.Contains(wrapped.Error(), "request timed out") {
+		t.Errorf("expected timeout message, got: %v", wrapped)
+	}
+	var urlErr *url.Error
+	if !errors.As(wrapped, &urlErr) {
+		t.Error("original *url.Error should be preserved in the error chain")
+	}
+}
+
+func TestWrapNetworkError_Unknown(t *testing.T) {
+	orig := fmt.Errorf("some unknown error")
+	wrapped := wrapNetworkError(orig)
+	if wrapped != orig {
+		t.Errorf("expected unknown error to be returned as-is, got: %v", wrapped)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// CreateCustomAlias
+// ---------------------------------------------------------------------------
+
+func TestClient_CreateCustomAlias(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v3/alias/custom/new" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body CreateCustomAliasRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode request body: %v", err)
+		}
+		if body.AliasPrefix != "my-prefix" {
+			t.Errorf("expected alias_prefix='my-prefix', got %q", body.AliasPrefix)
+		}
+		if body.SignedSuffix != ".abcdef@sl.local" {
+			t.Errorf("expected signed_suffix='.abcdef@sl.local', got %q", body.SignedSuffix)
+		}
+		if len(body.MailboxIDs) != 2 || body.MailboxIDs[0] != 1 || body.MailboxIDs[1] != 3 {
+			t.Errorf("expected mailbox_ids=[1,3], got %v", body.MailboxIDs)
+		}
+		if body.Note != "test note" {
+			t.Errorf("expected note='test note', got %q", body.Note)
+		}
+
+		w.WriteHeader(201)
+		alias := Alias{ID: 55, Email: "my-prefix.abcdef@sl.local"}
+		json.NewEncoder(w).Encode(alias)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	alias, _, err := c.CreateCustomAlias(&CreateCustomAliasRequest{
+		AliasPrefix:  "my-prefix",
+		SignedSuffix: ".abcdef@sl.local",
+		MailboxIDs:   []int{1, 3},
+		Note:         "test note",
+	})
+	if err != nil {
+		t.Fatalf("CreateCustomAlias: %v", err)
+	}
+	if alias.ID != 55 {
+		t.Errorf("expected ID 55, got %d", alias.ID)
+	}
+	if alias.Email != "my-prefix.abcdef@sl.local" {
+		t.Errorf("expected email 'my-prefix.abcdef@sl.local', got %q", alias.Email)
+	}
+}
+
+func TestClient_CreateCustomAlias_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(403)
+		w.Write([]byte(`{"error":"premium required"}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	_, _, err := c.CreateCustomAlias(&CreateCustomAliasRequest{
+		AliasPrefix:  "test",
+		SignedSuffix: ".xyz@sl.local",
+		MailboxIDs:   []int{1},
+	})
+	if err == nil {
+		t.Fatal("expected error for 403 response")
+	}
+	if !strings.Contains(err.Error(), "premium required") {
+		t.Errorf("expected 'premium required' error, got: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DeleteMailbox
+// ---------------------------------------------------------------------------
+
+func TestClient_DeleteMailbox_NoTransfer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/mailboxes/5" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		// When transferTo is nil, the body should be empty (no JSON)
+		bodyBytes, _ := io.ReadAll(r.Body)
+		if len(bodyBytes) > 0 {
+			t.Errorf("expected no request body when transferTo is nil, got: %s", string(bodyBytes))
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(`{"deleted": true}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	err := c.DeleteMailbox(5, nil)
+	if err != nil {
+		t.Fatalf("DeleteMailbox: %v", err)
+	}
+}
+
+func TestClient_DeleteMailbox_WithTransfer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/mailboxes/5" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body DeleteMailboxRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode request body: %v", err)
+		}
+		if body.TransferAliasesTo == nil || *body.TransferAliasesTo != 10 {
+			t.Errorf("expected transfer_aliases_to=10, got %v", body.TransferAliasesTo)
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(`{"deleted": true}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	transferTo := 10
+	err := c.DeleteMailbox(5, &transferTo)
+	if err != nil {
+		t.Fatalf("DeleteMailbox with transfer: %v", err)
+	}
+}
+
+func TestClient_DeleteMailbox_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	err := c.DeleteMailbox(999, nil)
+	if err == nil {
+		t.Fatal("expected error for 404 delete")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetAllAliasActivities - pagination
+// ---------------------------------------------------------------------------
+
+func TestClient_GetAllAliasActivities_Pagination(t *testing.T) {
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/api/aliases/42/activities") {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		callCount++
+		var resp ActivityResponse
+		switch callCount {
+		case 1:
+			resp = ActivityResponse{
+				Activities: []Activity{
+					{Action: "forward", From: "a@example.com", To: "me@sl.local"},
+					{Action: "block", From: "spam@example.com", To: "me@sl.local"},
+				},
+			}
+		case 2:
+			resp = ActivityResponse{
+				Activities: []Activity{
+					{Action: "reply", From: "me@sl.local", To: "b@example.com"},
+				},
+			}
+		default:
+			resp = ActivityResponse{Activities: []Activity{}}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	activities, err := c.GetAllAliasActivities(42)
+	if err != nil {
+		t.Fatalf("GetAllAliasActivities: %v", err)
+	}
+	if len(activities) != 3 {
+		t.Errorf("expected 3 activities across pages, got %d", len(activities))
+	}
+	if callCount != 3 {
+		t.Errorf("expected 3 API calls (2 with data + 1 empty), got %d", callCount)
+	}
+	if activities[0].Action != "forward" {
+		t.Errorf("expected first activity action='forward', got %q", activities[0].Action)
+	}
+	if activities[2].Action != "reply" {
+		t.Errorf("expected third activity action='reply', got %q", activities[2].Action)
+	}
+}
+
+func TestClient_GetAllAliasActivities_Empty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := ActivityResponse{Activities: []Activity{}}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	activities, err := c.GetAllAliasActivities(42)
+	if err != nil {
+		t.Fatalf("GetAllAliasActivities: %v", err)
+	}
+	if len(activities) != 0 {
+		t.Errorf("expected 0 activities, got %d", len(activities))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExportData / ExportAliases
+// ---------------------------------------------------------------------------
+
+func TestClient_ExportData(t *testing.T) {
+	rawData := `{"aliases": [{"email": "a@sl.local"}], "mailboxes": [{"email": "me@example.com"}]}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/export/data" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(rawData))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	data, err := c.ExportData()
+	if err != nil {
+		t.Fatalf("ExportData: %v", err)
+	}
+	if string(data) != rawData {
+		t.Errorf("expected raw data %q, got %q", rawData, string(data))
+	}
+}
+
+func TestClient_ExportData_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(401)
+		w.Write([]byte(`{"error":"unauthorized"}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	_, err := c.ExportData()
+	if err == nil {
+		t.Fatal("expected error for 401 response")
+	}
+}
+
+func TestClient_ExportAliases(t *testing.T) {
+	csvData := "alias,enabled,note\na@sl.local,true,test\nb@sl.local,false,"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/export/aliases" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(csvData))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	data, err := c.ExportAliases()
+	if err != nil {
+		t.Fatalf("ExportAliases: %v", err)
+	}
+	if string(data) != csvData {
+		t.Errorf("expected CSV data %q, got %q", csvData, string(data))
+	}
+}
+
+func TestClient_ExportAliases_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"internal server error"}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	_, err := c.ExportAliases()
+	if err == nil {
+		t.Fatal("expected error for 500 response")
 	}
 }
