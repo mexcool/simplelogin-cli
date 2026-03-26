@@ -4,6 +4,7 @@ version: 2
 before:
   hooks:
     - go mod tidy
+    - go run ./cmd/gen-man man/
 
 builds:
   - id: sl
@@ -40,6 +41,7 @@ archives:
     files:
       - LICENSE*
       - README*
+      - man/*.1
 
 checksum:
   name_template: "checksums.txt"

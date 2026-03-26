@@ -50,6 +50,11 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
+// RootCmd returns the root cobra.Command, used by tooling such as man page generation.
+func RootCmd() *cobra.Command {
+	return rootCmd
+}
+
 var completionCmd = &cobra.Command{
 	Use:       "completion [bash|zsh|fish|powershell]",
 	Short:     "Generate shell completion scripts",

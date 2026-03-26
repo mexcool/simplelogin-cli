@@ -9,7 +9,10 @@ install: build
 test:
 	go test ./...
 
-clean:
-	rm -rf bin/
+man:
+	go run ./cmd/gen-man man/
 
-.PHONY: build install test clean
+clean:
+	rm -rf bin/ man/
+
+.PHONY: build install test man clean
