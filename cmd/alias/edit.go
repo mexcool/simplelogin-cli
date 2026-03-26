@@ -57,14 +57,12 @@ func init() {
 func runEdit(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	id, err := client.ResolveAliasID(args[0])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -100,7 +98,6 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := client.UpdateAlias(id, req); err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

@@ -53,21 +53,18 @@ func init() {
 func runActivity(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	id, err := client.ResolveAliasID(args[0])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	if activityAll {
 		activities, err := client.GetAllAliasActivities(id)
 		if err != nil {
-			output.PrintError("%v", err)
 			return err
 		}
 
@@ -85,7 +82,6 @@ func runActivity(cmd *cobra.Command, args []string) error {
 
 	activities, rawJSON, err := client.GetAliasActivities(id, activityPage-1)
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

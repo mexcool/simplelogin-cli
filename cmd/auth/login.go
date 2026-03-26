@@ -66,8 +66,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		}
 
 		if err := intauth.SaveOPRef(loginVault, loginItem); err != nil {
-			output.PrintError("Failed to save 1Password reference: %v", err)
-			return err
+			return fmt.Errorf("failed to save 1Password reference: %w", err)
 		}
 
 		// Validate by trying to get the key and calling the API
@@ -92,9 +91,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	key := loginKey
 	if key == "" {
 		if !output.IsInteractive() {
-			err := fmt.Errorf("no API key provided. Use: sl auth login --key <api-key>")
-			output.PrintError("%v", err)
-			return err
+			return fmt.Errorf("no API key provided; use: sl auth login --key <api-key>")
 		}
 		// Interactive mode
 		fmt.Fprint(os.Stderr, "Enter your SimpleLogin API key: ")
@@ -111,14 +108,12 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	client := api.NewClient(key)
 	info, _, err := client.GetUserInfo()
 	if err != nil {
-		output.PrintError("Invalid API key: %v", err)
-		return err
+		return fmt.Errorf("invalid API key: %w", err)
 	}
 
 	// Save the key
 	if err := intauth.SaveAPIKey(key); err != nil {
-		output.PrintError("Failed to save API key: %v", err)
-		return err
+		return fmt.Errorf("failed to save API key: %w", err)
 	}
 
 	output.PrintSuccess("Authenticated as %s (%s)", info.Name, info.Email)

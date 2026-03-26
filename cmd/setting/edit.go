@@ -58,7 +58,6 @@ func init() {
 func runEdit(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -94,7 +93,6 @@ func runEdit(cmd *cobra.Command, args []string) error {
 
 	client := api.NewClient(key)
 	if err := client.UpdateSettings(req); err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

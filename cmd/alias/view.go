@@ -49,20 +49,17 @@ func init() {
 func runView(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	id, err := client.ResolveAliasID(args[0])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	alias, rawJSON, err := client.GetAlias(id)
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
