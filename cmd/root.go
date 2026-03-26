@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mexcool/simplelogin-cli/cmd/account"
 	"github.com/mexcool/simplelogin-cli/cmd/alias"
@@ -61,21 +62,9 @@ func SetVersionInfo(v, commit, date string) {
 		if date != "" {
 			parts = append(parts, date)
 		}
-		display = fmt.Sprintf("%s (%s)", v, joinStrings(parts, ", "))
+		display = fmt.Sprintf("%s (%s)", v, strings.Join(parts, ", "))
 	}
 	rootCmd.Version = display
-}
-
-// joinStrings concatenates strings with a separator (avoids importing strings package for one call).
-func joinStrings(elems []string, sep string) string {
-	if len(elems) == 0 {
-		return ""
-	}
-	result := elems[0]
-	for _, e := range elems[1:] {
-		result += sep + e
-	}
-	return result
 }
 
 // Execute runs the root command.

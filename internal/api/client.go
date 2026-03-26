@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -94,22 +95,7 @@ func wrapNetworkError(err error) error {
 
 // isConnectionRefused reports whether err represents a "connection refused" syscall error.
 func isConnectionRefused(err error) bool {
-	// The most portable check is a string match on the syscall error message.
-	return err != nil && (err.Error() == "connection refused" ||
-		containsString(err.Error(), "connection refused"))
-}
-
-// containsString is a simple helper to avoid importing "strings" just for this.
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		func() bool {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
-				}
-			}
-			return false
-		}())
+	return err != nil && strings.Contains(err.Error(), "connection refused")
 }
 
 func (c *Client) do(method, path string, body interface{}) ([]byte, int, error) {
