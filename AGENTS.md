@@ -1,0 +1,115 @@
+# AGENTS.md
+
+This file provides guidance to AI coding agents when working with code in this repository. `CLAUDE.md` symlinks here.
+
+## Build & Test Commands
+
+```bash
+make build          # Build binary to ./bin/sl (with ldflags for version injection)
+make test           # go test ./...
+make lint           # golangci-lint run ./... (CI uses v1.64)
+make vet            # go vet ./...
+make fmt            # gofmt -w .
+make coverage       # Generate coverage report
+make man            # Generate man pages via cmd/gen-man
+```
+
+Run a single test: `go test -run TestHandleError_401 ./internal/api/`
+Run tests with race detector (as CI does): `go test -race ./...`
+
+## Architecture
+
+This is a cobra-based CLI (`sl`) for the SimpleLogin API. Binary entrypoint is `cmd/sl/main.go`.
+
+### Package structure
+
+- `cmd/sl/main.go` — entrypoint, version injection via ldflags, exit code handling (1=runtime error, 2=usage error)
+- `cmd/root.go` — root cobra command, `--verbose` persistent flag, `PersistentPreRun` sets `api.Verbose`
+- `cmd/<resource>/<verb>.go` — one file per subcommand (e.g., `cmd/alias/create.go`)
+- `cmd/<resource>/<resource>.go` — parent command that wires subcommands via `Cmd.AddCommand()`
+- `internal/api/client.go` — API client, all HTTP methods, error handling
+- `internal/auth/auth.go` — config file management, API key priority chain, base URL resolution
+- `internal/output/output.go` — table rendering, JSON/jq output, terminal detection, confirmation prompts
+
+### Command pattern
+
+Every command follows this structure:
+
+1. Package-level `var xxxCmd = &cobra.Command{...}` with `RunE` pointing to `runXxx`
+2. Package-level flag vars (e.g., `var createJSON bool`)
+3. `init()` registers flags and is called by Go automatically
+4. `runXxx` function: get API key → construct client → validate input → call API → branch on `--json`/`--jq` for output
+
+Client construction always looks like: `client := api.NewClient(key, auth.GetAPIBase())`
+
+### API client design
+
+- `NewClient(apiKey, baseURL string)` — baseURL falls back to `https://app.simplelogin.io` when empty
+- API methods return `(typedResult, rawJSON []byte, error)` — rawJSON is the untouched API response, passed directly to `output.PrintJSON`/`PrintJQ`. Never re-marshal typed results for JSON output.
+- The `Authentication` header (not `Authorization`) is correct per SimpleLogin's API spec
+- `wrapNetworkError` translates DNS/timeout/TLS/connection-refused errors into user-friendly messages
+- `ResolveAliasID(idOrEmail)` lets commands accept either numeric IDs or email addresses
+
+### Auth priority chain (`GetAPIKey`)
+
+1. `SIMPLELOGIN_API_KEY` env var
+2. `SL_API_KEY` env var
+3. 1Password CLI (`op read`) if `op_ref` is configured
+4. `api_key` from config file
+
+### Stdout vs stderr separation (critical)
+
+- **stdout**: machine-readable data only — JSON output, created alias email, table listings
+- **stderr**: status messages (`PrintSuccess`/`PrintWarning`/`PrintError`), prompts, verbose logging
+- This separation enables piping: `NEW_ALIAS=$(sl alias create --random 2>/dev/null)`
+
+## Agentic-First Design Principles
+
+This CLI is designed for agent and script consumption first, human use second. When adding or modifying commands, follow these principles:
+
+### Every command that returns data must support `--json` and `--jq`
+
+These are per-command flags (not global). The pattern:
+
+```go
+if createJSON || createJQ != "" {
+    if createJQ != "" {
+        return output.PrintJQ(rawJSON, createJQ)
+    }
+    return output.PrintJSON(rawJSON)
+}
+```
+
+### Errors must be actionable
+
+Bad: `"invalid ID"`. Good: `"invalid contact ID %q: expected a numeric ID (use 'sl contact list <alias>' to find IDs)"`. An agent reading the error should know exactly what to do next.
+
+### Non-interactive by default
+
+- `IsInteractive()` gates all prompts (checks stdin TTY)
+- `ConfirmAction()` returns `false` in non-interactive mode — destructive ops require `--yes` in scripts
+- Interactive prompts must always have a flag alternative (`--key`, `--suffix N`, `--yes`)
+- Cancelled operations return an error (exit non-zero), not nil
+
+### Prefer idempotent operations over toggles
+
+`enable`/`disable` and `block`/`unblock` check current state first and are safe to call repeatedly. Agents should use these instead of `toggle`.
+
+### Exit codes matter
+
+- `0` — success
+- `1` — runtime error (API failure, network error)
+- `2` — usage error (wrong args, invalid flags) — lets agents distinguish "bad invocation" from "API down"
+
+### Self-documenting via `--help`
+
+Every command must have `Short`, `Long`, and `Example` fields. Agents discover capabilities by reading help text rather than documentation.
+
+## Non-Obvious Things
+
+- `--json`/`--jq` flags are local per-command, not persistent on the root. Some commands (like `auth login`) intentionally don't have them.
+- `api.Verbose` is a package-level var set in `PersistentPreRun`, snapshotted into the client struct at construction. Not a global that changes mid-execution.
+- The `SuffixOption` struct has `IsCustom`/`IsPremium` fields. `GetAliasOptions(hostname)` accepts a hostname to tailor suggestions.
+- `CreateRandomAlias(note, hostname, mode)` takes 3 string params. `mode` is `"uuid"`, `"word"`, or empty.
+- Tests use `httptest.Server` — `newTestClient(t, srv)` in `client_test.go` points the client at a test server.
+- GoReleaser builds for linux/darwin/windows on amd64/arm64 with CGO_ENABLED=0. Homebrew tap at `mexcool/homebrew-tap`.
