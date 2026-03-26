@@ -26,8 +26,7 @@ obtaining the API key (environment variable, 1Password, or config file).`,
 func runStatus(cmd *cobra.Command, args []string) error {
 	key, err := intauth.GetAPIKey()
 	if err != nil {
-		output.PrintError("Not authenticated: %v", err)
-		return err
+		return fmt.Errorf("not authenticated: %w (run 'sl auth login' to authenticate)", err)
 	}
 
 	// Determine key source
@@ -43,8 +42,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	client := api.NewClient(key)
 	info, _, err := client.GetUserInfo()
 	if err != nil {
-		output.PrintError("Failed to validate key: %v", err)
-		return err
+		return fmt.Errorf("failed to validate API key: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Authenticated as: %s (%s)\n", output.Bold.Sprint(info.Name), info.Email)

@@ -55,12 +55,11 @@ func init() {
 func runEdit(cmd *cobra.Command, args []string) error {
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid mailbox ID: %s", args[0])
+		return fmt.Errorf("invalid mailbox ID %q: expected a numeric ID (use 'sl mailbox list' to find IDs)", args[0])
 	}
 
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
@@ -89,7 +88,6 @@ func runEdit(cmd *cobra.Command, args []string) error {
 
 	client := api.NewClient(key)
 	if err := client.UpdateMailbox(id, req); err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

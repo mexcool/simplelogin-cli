@@ -52,21 +52,18 @@ func init() {
 func runList(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	aliasID, err := client.ResolveAliasID(args[0])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	if listAll {
 		contacts, err := client.GetAllAliasContacts(aliasID)
 		if err != nil {
-			output.PrintError("%v", err)
 			return err
 		}
 
@@ -84,7 +81,6 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	contacts, rawJSON, err := client.GetAliasContacts(aliasID, listPage-1)
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 

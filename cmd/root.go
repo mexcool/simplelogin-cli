@@ -36,8 +36,7 @@ Authentication:
 Output:
   By default, commands display colored table output. Use --json for
   machine-readable JSON output, or --jq to filter JSON with jq expressions.`,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage: true,
 }
 
 // SetVersionInfo sets the version string shown by --version, including

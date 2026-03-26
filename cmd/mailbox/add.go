@@ -24,14 +24,12 @@ verify the mailbox before it can be used to receive forwarded emails.`,
 func runAdd(cmd *cobra.Command, args []string) error {
 	key, err := auth.GetAPIKey()
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
 	client := api.NewClient(key)
 	_, _, err = client.CreateMailbox(args[0])
 	if err != nil {
-		output.PrintError("%v", err)
 		return err
 	}
 
