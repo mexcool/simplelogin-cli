@@ -107,6 +107,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	var selectedSuffix api.SuffixOption
 
 	if createSuffix == "" {
+		if !output.IsInteractive() {
+			var hints []string
+			for i, s := range opts.Suffixes {
+				hints = append(hints, fmt.Sprintf("%d: %s%s", i, createPrefix, s.Suffix))
+			}
+			err := fmt.Errorf("--suffix is required in non-interactive mode. Available suffixes:\n  %s", strings.Join(hints, "\n  "))
+			output.PrintError("%v", err)
+			return err
+		}
 		// Interactive suffix selection
 		fmt.Fprintln(os.Stderr, "Available suffixes:")
 		for i, s := range opts.Suffixes {

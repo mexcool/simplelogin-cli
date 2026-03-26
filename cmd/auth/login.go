@@ -91,6 +91,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	key := loginKey
 	if key == "" {
+		if !output.IsInteractive() {
+			err := fmt.Errorf("no API key provided. Use: sl auth login --key <api-key>")
+			output.PrintError("%v", err)
+			return err
+		}
 		// Interactive mode
 		fmt.Fprint(os.Stderr, "Enter your SimpleLogin API key: ")
 		scanner := bufio.NewScanner(os.Stdin)

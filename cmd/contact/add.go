@@ -10,8 +10,9 @@ import (
 )
 
 var addCmd = &cobra.Command{
-	Use:   "add <alias-id-or-email> <contact-email>",
-	Short: "Add a contact to an alias",
+	Use:     "add <alias-id-or-email> <contact-email>",
+	Aliases: []string{"create"},
+	Short:   "Add a contact to an alias",
 	Long: `Add a contact email to an alias, creating a reverse alias.
 
 The reverse alias can be used to send emails from your alias to the

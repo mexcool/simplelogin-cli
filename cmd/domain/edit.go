@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -31,7 +32,10 @@ auto-created aliases on this domain.`,
   sl domain edit 123 --random-prefix
 
   # Set a display name
-  sl domain edit 123 --name "My Domain"`,
+  sl domain edit 123 --name "My Domain"
+
+  # Edit and return updated domain as JSON
+  sl domain edit 123 --catch-all --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: runEdit,
 }
@@ -42,6 +46,8 @@ var (
 	editRandomPrefix   bool
 	editNoRandomPrefix bool
 	editName           string
+	editJSON           bool
+	editJQ             string
 )
 
 func init() {
@@ -50,6 +56,8 @@ func init() {
 	editCmd.Flags().BoolVar(&editRandomPrefix, "random-prefix", false, "Enable random prefix generation")
 	editCmd.Flags().BoolVar(&editNoRandomPrefix, "no-random-prefix", false, "Disable random prefix generation")
 	editCmd.Flags().StringVar(&editName, "name", "", "Set display name")
+	editCmd.Flags().BoolVar(&editJSON, "json", false, "Output updated domain as JSON")
+	editCmd.Flags().StringVar(&editJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runEdit(cmd *cobra.Command, args []string) error {
@@ -104,5 +112,32 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Domain updated")
+
+	if editJQ != "" || editJSON {
+		domains, _, err := client.ListCustomDomains()
+		if err != nil {
+			output.PrintWarning("Updated, but failed to fetch updated state: %v", err)
+			return nil
+		}
+		var found *api.CustomDomain
+		for i := range domains {
+			if domains[i].ID == id {
+				found = &domains[i]
+				break
+			}
+		}
+		if found == nil {
+			output.PrintWarning("Updated, but domain ID %d not found in list", id)
+			return nil
+		}
+		data, err := json.Marshal(found)
+		if err != nil {
+			return fmt.Errorf("failed to marshal domain: %w", err)
+		}
+		if editJQ != "" {
+			return output.PrintJQ(data, editJQ)
+		}
+		return output.PrintJSON(data)
+	}
 	return nil
 }

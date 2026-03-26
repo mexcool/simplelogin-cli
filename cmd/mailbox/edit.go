@@ -1,6 +1,7 @@
 package mailbox
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -27,21 +28,28 @@ Use --cancel-change to cancel a pending email change.`,
   sl mailbox edit 456 --email new-email@example.com
 
   # Cancel a pending email change
-  sl mailbox edit 456 --cancel-change`,
+  sl mailbox edit 456 --cancel-change
+
+  # Edit and return updated mailbox as JSON
+  sl mailbox edit 456 --default --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: runEdit,
 }
 
 var (
-	editDefault     bool
-	editEmail       string
+	editDefault      bool
+	editEmail        string
 	editCancelChange bool
+	editJSON         bool
+	editJQ           string
 )
 
 func init() {
 	editCmd.Flags().BoolVar(&editDefault, "default", false, "Set as default mailbox")
 	editCmd.Flags().StringVar(&editEmail, "email", "", "Change mailbox email")
 	editCmd.Flags().BoolVar(&editCancelChange, "cancel-change", false, "Cancel pending email change")
+	editCmd.Flags().BoolVar(&editJSON, "json", false, "Output updated mailbox as JSON")
+	editCmd.Flags().StringVar(&editJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runEdit(cmd *cobra.Command, args []string) error {
@@ -86,5 +94,32 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Mailbox updated")
+
+	if editJQ != "" || editJSON {
+		mailboxes, _, err := client.ListMailboxes()
+		if err != nil {
+			output.PrintWarning("Updated, but failed to fetch updated state: %v", err)
+			return nil
+		}
+		var found *api.Mailbox
+		for i := range mailboxes {
+			if mailboxes[i].ID == id {
+				found = &mailboxes[i]
+				break
+			}
+		}
+		if found == nil {
+			output.PrintWarning("Updated, but mailbox ID %d not found in list", id)
+			return nil
+		}
+		data, err := json.Marshal(found)
+		if err != nil {
+			return fmt.Errorf("failed to marshal mailbox: %w", err)
+		}
+		if editJQ != "" {
+			return output.PrintJQ(data, editJQ)
+		}
+		return output.PrintJSON(data)
+	}
 	return nil
 }

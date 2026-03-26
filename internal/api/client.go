@@ -261,22 +261,22 @@ func (c *Client) DeleteAlias(id int) error {
 }
 
 // ToggleAlias toggles an alias between enabled and disabled.
-func (c *Client) ToggleAlias(id int) (bool, error) {
+func (c *Client) ToggleAlias(id int) (bool, []byte, error) {
 	body, status, err := c.do("POST", fmt.Sprintf("/api/aliases/%d/toggle", id), nil)
 	if err != nil {
-		return false, fmt.Errorf("failed to toggle alias: %w", err)
+		return false, nil, fmt.Errorf("failed to toggle alias: %w", err)
 	}
 	if status != 200 {
-		return false, HandleError(status, body, "toggle alias")
+		return false, body, HandleError(status, body, "toggle alias")
 	}
 
 	var resp struct {
 		Enabled bool `json:"enabled"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return false, fmt.Errorf("failed to parse toggle response: %w", err)
+		return false, body, fmt.Errorf("failed to parse toggle response: %w", err)
 	}
-	return resp.Enabled, nil
+	return resp.Enabled, body, nil
 }
 
 // UpdateAliasRequest is the request body for updating an alias.
@@ -521,22 +521,22 @@ func (c *Client) DeleteContact(id int) error {
 }
 
 // ToggleContact toggles blocking/unblocking a contact.
-func (c *Client) ToggleContact(id int) (bool, error) {
+func (c *Client) ToggleContact(id int) (bool, []byte, error) {
 	body, status, err := c.do("POST", fmt.Sprintf("/api/contacts/%d/toggle", id), nil)
 	if err != nil {
-		return false, fmt.Errorf("failed to toggle contact: %w", err)
+		return false, nil, fmt.Errorf("failed to toggle contact: %w", err)
 	}
 	if status != 200 {
-		return false, HandleError(status, body, "toggle contact")
+		return false, body, HandleError(status, body, "toggle contact")
 	}
 
 	var resp struct {
 		BlockForward bool `json:"block_forward"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return false, fmt.Errorf("failed to parse toggle response: %w", err)
+		return false, body, fmt.Errorf("failed to parse toggle response: %w", err)
 	}
-	return resp.BlockForward, nil
+	return resp.BlockForward, body, nil
 }
 
 // --- Mailboxes ---

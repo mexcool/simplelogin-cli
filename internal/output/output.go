@@ -9,6 +9,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/itchyny/gojq"
+	"github.com/mattn/go-isatty"
 )
 
 var (
@@ -206,8 +207,17 @@ func Truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// IsInteractive reports whether stdin is an interactive terminal.
+func IsInteractive() bool {
+	return isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd())
+}
+
 // ConfirmAction prompts the user for confirmation.
+// Returns false immediately in non-interactive mode (safe default).
 func ConfirmAction(prompt string) bool {
+	if !IsInteractive() {
+		return false
+	}
 	fmt.Fprintf(os.Stderr, "%s [y/N]: ", prompt)
 	var response string
 	fmt.Scanln(&response)

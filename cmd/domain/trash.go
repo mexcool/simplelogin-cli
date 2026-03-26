@@ -12,8 +12,9 @@ import (
 )
 
 var trashCmd = &cobra.Command{
-	Use:   "trash <domain-id>",
-	Short: "View deleted aliases for a domain",
+	Use:     "trash <domain-id>",
+	Aliases: []string{"deleted"},
+	Short:   "View deleted aliases for a domain",
 	Long: `List aliases that have been deleted from a custom domain.
 
 Shows the alias email and deletion date. These aliases can potentially

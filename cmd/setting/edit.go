@@ -28,7 +28,10 @@ Available options:
   sl setting edit --notifications off
 
   # Set default domain and suffix type
-  sl setting edit --default-domain simplelogin.co --suffix-type word`,
+  sl setting edit --default-domain simplelogin.co --suffix-type word
+
+  # Edit and return updated settings as JSON
+  sl setting edit --generator uuid --json`,
 	RunE: runEdit,
 }
 
@@ -38,6 +41,8 @@ var (
 	editNotifications string
 	editDefaultDomain string
 	editSuffixType    string
+	editJSON          bool
+	editJQ            string
 )
 
 func init() {
@@ -46,6 +51,8 @@ func init() {
 	editCmd.Flags().StringVar(&editNotifications, "notifications", "", "Notifications: on or off")
 	editCmd.Flags().StringVar(&editDefaultDomain, "default-domain", "", "Default domain for random aliases")
 	editCmd.Flags().StringVar(&editSuffixType, "suffix-type", "", "Suffix type: word or random_string")
+	editCmd.Flags().BoolVar(&editJSON, "json", false, "Output updated settings as JSON")
+	editCmd.Flags().StringVar(&editJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runEdit(cmd *cobra.Command, args []string) error {
@@ -92,5 +99,17 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Settings updated")
+
+	if editJQ != "" || editJSON {
+		_, rawJSON, err := client.GetSettings()
+		if err != nil {
+			output.PrintWarning("Updated, but failed to fetch updated state: %v", err)
+			return nil
+		}
+		if editJQ != "" {
+			return output.PrintJQ(rawJSON, editJQ)
+		}
+		return output.PrintJSON(rawJSON)
+	}
 	return nil
 }

@@ -26,7 +26,10 @@ Accepts either a numeric alias ID or the full alias email address.`,
   sl alias edit my-alias@simplelogin.co --name "My Alias" --mailbox 456
 
   # Unpin an alias
-  sl alias edit 12345 --unpin`,
+  sl alias edit 12345 --unpin
+
+  # Edit and return updated alias as JSON
+  sl alias edit 12345 --note "test" --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: runEdit,
 }
@@ -37,6 +40,8 @@ var (
 	editMailbox []int
 	editPin     bool
 	editUnpin   bool
+	editJSON    bool
+	editJQ      string
 )
 
 func init() {
@@ -45,6 +50,8 @@ func init() {
 	editCmd.Flags().IntSliceVar(&editMailbox, "mailbox", nil, "Set mailbox IDs")
 	editCmd.Flags().BoolVar(&editPin, "pin", false, "Pin the alias")
 	editCmd.Flags().BoolVar(&editUnpin, "unpin", false, "Unpin the alias")
+	editCmd.Flags().BoolVar(&editJSON, "json", false, "Output updated alias as JSON")
+	editCmd.Flags().StringVar(&editJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runEdit(cmd *cobra.Command, args []string) error {
@@ -98,5 +105,17 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Alias updated")
+
+	if editJQ != "" || editJSON {
+		_, rawJSON, err := client.GetAlias(id)
+		if err != nil {
+			output.PrintWarning("Updated, but failed to fetch updated state: %v", err)
+			return nil
+		}
+		if editJQ != "" {
+			return output.PrintJQ(rawJSON, editJQ)
+		}
+		return output.PrintJSON(rawJSON)
+	}
 	return nil
 }

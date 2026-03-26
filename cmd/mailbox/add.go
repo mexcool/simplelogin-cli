@@ -8,8 +8,9 @@ import (
 )
 
 var addCmd = &cobra.Command{
-	Use:   "add <email>",
-	Short: "Add a new mailbox",
+	Use:     "add <email>",
+	Aliases: []string{"create"},
+	Short:   "Add a new mailbox",
 	Long: `Add a new mailbox to your SimpleLogin account.
 
 A verification email will be sent to the provided address. You must

@@ -1,6 +1,10 @@
 package alias
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+
 	"github.com/mexcool/simplelogin-cli/internal/api"
 	"github.com/mexcool/simplelogin-cli/internal/auth"
 	"github.com/mexcool/simplelogin-cli/internal/output"
@@ -15,20 +19,34 @@ var deleteCmd = &cobra.Command{
 This action is irreversible. The alias will stop forwarding emails
 immediately. You will be prompted for confirmation unless --yes is provided.
 
+Use --dry-run to preview what would be deleted without actually deleting.
+
 Accepts either a numeric alias ID or the full alias email address.`,
 	Example: `  # Delete alias by ID (with confirmation prompt)
   sl alias delete 12345
 
   # Delete alias by email without confirmation
-  sl alias delete my-alias@simplelogin.co --yes`,
+  sl alias delete my-alias@simplelogin.co --yes
+
+  # Preview what would be deleted
+  sl alias delete 12345 --dry-run
+
+  # Delete and get JSON confirmation
+  sl alias delete 12345 --yes --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: runDelete,
 }
 
-var deleteYes bool
+var (
+	deleteYes    bool
+	deleteJSON   bool
+	deleteDryRun bool
+)
 
 func init() {
 	deleteCmd.Flags().BoolVar(&deleteYes, "yes", false, "Skip confirmation prompt")
+	deleteCmd.Flags().BoolVar(&deleteJSON, "json", false, "Output as JSON")
+	deleteCmd.Flags().BoolVar(&deleteDryRun, "dry-run", false, "Preview without deleting")
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
@@ -45,6 +63,25 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if deleteDryRun {
+		alias, rawJSON, err := client.GetAlias(id)
+		if err != nil {
+			output.PrintError("Failed to fetch alias for preview: %v", err)
+			return err
+		}
+		if deleteJSON {
+			_ = output.PrintJSON(rawJSON)
+		} else {
+			fmt.Fprintln(os.Stdout, "Would delete alias:")
+			fmt.Fprintf(os.Stdout, "  ID:     %d\n", alias.ID)
+			fmt.Fprintf(os.Stdout, "  Email:  %s\n", alias.Email)
+			fmt.Fprintf(os.Stdout, "  Status: %s\n", output.EnabledStatus(alias.Enabled))
+			fmt.Fprintf(os.Stdout, "  Note:   %s\n", output.StringOrEmpty(alias.Note))
+		}
+		output.PrintWarning("No changes made. (dry-run)")
+		return nil
+	}
+
 	if !deleteYes {
 		if !output.ConfirmAction("Delete alias " + args[0] + "?") {
 			output.PrintWarning("Cancelled")
@@ -57,6 +94,12 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if deleteJSON {
+		data, _ := json.Marshal(map[string]interface{}{"deleted": true, "id": id})
+		fmt.Println(string(data))
+		return nil
+	}
 	output.PrintSuccess("Alias deleted")
+	fmt.Println(id)
 	return nil
 }

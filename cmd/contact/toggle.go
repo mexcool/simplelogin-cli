@@ -20,9 +20,22 @@ be rejected. When unblocked, emails flow normally.
 
 Use "sl contact list <alias>" to find contact IDs.`,
 	Example: `  # Toggle block status of a contact
-  sl contact toggle 456`,
+  sl contact toggle 456
+
+  # Toggle and get result as JSON
+  sl contact toggle 456 --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: runToggle,
+}
+
+var (
+	toggleJSON bool
+	toggleJQ   string
+)
+
+func init() {
+	toggleCmd.Flags().BoolVar(&toggleJSON, "json", false, "Output as JSON")
+	toggleCmd.Flags().StringVar(&toggleJQ, "jq", "", "Apply jq expression to JSON output")
 }
 
 func runToggle(cmd *cobra.Command, args []string) error {
@@ -38,10 +51,17 @@ func runToggle(cmd *cobra.Command, args []string) error {
 	}
 
 	client := api.NewClient(key)
-	blocked, err := client.ToggleContact(id)
+	blocked, rawJSON, err := client.ToggleContact(id)
 	if err != nil {
 		output.PrintError("%v", err)
 		return err
+	}
+
+	if toggleJQ != "" {
+		return output.PrintJQ(rawJSON, toggleJQ)
+	}
+	if toggleJSON {
+		return output.PrintJSON(rawJSON)
 	}
 
 	if blocked {
@@ -49,5 +69,6 @@ func runToggle(cmd *cobra.Command, args []string) error {
 	} else {
 		output.PrintSuccess("Contact %d is now unblocked", id)
 	}
+	fmt.Printf("blocked=%v\n", blocked)
 	return nil
 }
