@@ -737,6 +737,23 @@ type CustomDomainListResponse struct {
 	CustomDomains []CustomDomain `json:"custom_domains"`
 }
 
+// GetCustomDomain retrieves a single custom domain by ID.
+func (c *Client) GetCustomDomain(id int) (*CustomDomain, []byte, error) {
+	body, status, err := c.do("GET", fmt.Sprintf("/api/custom_domains/%d", id), nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get custom domain: %w", err)
+	}
+	if status != 200 {
+		return nil, body, HandleError(status, body, "get custom domain")
+	}
+
+	var domain CustomDomain
+	if err := json.Unmarshal(body, &domain); err != nil {
+		return nil, body, fmt.Errorf("failed to parse custom domain: %w", err)
+	}
+	return &domain, body, nil
+}
+
 // ListCustomDomains retrieves all custom domains.
 func (c *Client) ListCustomDomains() ([]CustomDomain, []byte, error) {
 	body, status, err := c.do("GET", "/api/custom_domains", nil)
