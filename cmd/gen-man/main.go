@@ -23,8 +23,6 @@ func main() {
 		log.Fatalf("failed to create output directory %q: %v", outDir, err)
 	}
 
-	// Build a minimal root command that mirrors the real one, with a fixed
-	// date so the generated pages are deterministic.
 	header := &doc.GenManHeader{
 		Title:   "SL",
 		Section: "1",
