@@ -351,6 +351,28 @@ func TestClient_CreateRandomAlias(t *testing.T) {
 	}
 }
 
+func TestClient_CreateRandomAlias_WithHostname(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hostname := r.URL.Query().Get("hostname")
+		if hostname != "github.com" {
+			t.Errorf("expected hostname=github.com, got %q", hostname)
+		}
+		w.WriteHeader(201)
+		alias := Alias{ID: 102, Email: "gh-random@sl.local"}
+		_ = json.NewEncoder(w).Encode(alias)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv)
+	alias, _, err := c.CreateRandomAlias("", "github.com", "")
+	if err != nil {
+		t.Fatalf("CreateRandomAlias with hostname: %v", err)
+	}
+	if alias.ID != 102 {
+		t.Errorf("expected ID 102, got %d", alias.ID)
+	}
+}
+
 func TestClient_CreateRandomAlias_WithMode(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {

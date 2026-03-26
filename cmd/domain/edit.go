@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -121,30 +120,15 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	output.PrintSuccess("Domain updated")
 
 	if editJQ != "" || editJSON {
-		domains, _, err := client.ListCustomDomains()
+		_, rawJSON, err := client.GetCustomDomain(id)
 		if err != nil {
 			output.PrintWarning("Updated, but failed to fetch updated state: %v", err)
 			return nil
 		}
-		var found *api.CustomDomain
-		for i := range domains {
-			if domains[i].ID == id {
-				found = &domains[i]
-				break
-			}
-		}
-		if found == nil {
-			output.PrintWarning("Updated, but domain ID %d not found in list", id)
-			return nil
-		}
-		data, err := json.Marshal(found)
-		if err != nil {
-			return fmt.Errorf("failed to marshal domain: %w", err)
-		}
 		if editJQ != "" {
-			return output.PrintJQ(data, editJQ)
+			return output.PrintJQ(rawJSON, editJQ)
 		}
-		return output.PrintJSON(data)
+		return output.PrintJSON(rawJSON)
 	}
 	return nil
 }
