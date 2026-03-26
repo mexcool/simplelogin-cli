@@ -10,8 +10,10 @@ LDFLAGS := -s -w \
 build:
 	go build -ldflags="$(LDFLAGS)" -o bin/sl ./cmd/sl
 
+PREFIX ?= /usr/local
 install: build
-	cp bin/sl /usr/local/bin/sl
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -m 755 bin/sl $(DESTDIR)$(PREFIX)/bin/sl
 
 test:
 	go test ./...
@@ -19,7 +21,20 @@ test:
 man:
 	go run ./cmd/gen-man man/
 
+lint:
+	golangci-lint run ./...
+
+fmt:
+	gofmt -w .
+
+vet:
+	go vet ./...
+
+coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+
 clean:
 	rm -rf bin/ man/
 
-.PHONY: build install test man clean
+.PHONY: build install test man lint fmt vet coverage clean
