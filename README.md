@@ -272,6 +272,10 @@ api_key: sl_xxxxxxxxxxxxx
 op_ref: op://Personal/SimpleLogin API Key/credential
 ```
 
+## Disclaimer
+
+This is an unofficial, community-developed CLI tool and is not affiliated with, endorsed by, or supported by SimpleLogin or Proton AG. SimpleLogin is a trademark of Proton AG. Please direct any issues with this tool to [this repository's issue tracker](https://github.com/mexcool/simplelogin-cli/issues), not to SimpleLogin support.
+
 ## License
 
-MIT
+[MIT](LICENSE)
