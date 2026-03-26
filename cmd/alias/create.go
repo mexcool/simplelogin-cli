@@ -91,6 +91,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if createMode != "" && createMode != "uuid" && createMode != "word" {
 		return fmt.Errorf("--mode must be 'uuid' or 'word'")
 	}
+	if createMode != "" && !createRandom {
+		return fmt.Errorf("--mode can only be used with --random")
+	}
 
 	if createRandom {
 		alias, rawJSON, err := client.CreateRandomAlias(createNote, createHostname, createMode)
@@ -116,7 +119,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get available options
-	opts, _, err := client.GetAliasOptions("")
+	opts, _, err := client.GetAliasOptions(createHostname)
 	if err != nil {
 		return err
 	}
