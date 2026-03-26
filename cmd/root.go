@@ -28,7 +28,7 @@ Authentication:
   1. SIMPLELOGIN_API_KEY environment variable
   2. SL_API_KEY environment variable
   3. 1Password CLI (if configured via sl auth login --1password)
-  4. Config file (~/.config/simplelogin/config.yml)
+  4. Config file ($XDG_CONFIG_HOME/simplelogin/config.yml, defaults to ~/.config/simplelogin/config.yml)
 
   Run "sl auth login" to get started.
 

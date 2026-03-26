@@ -46,7 +46,7 @@ export SL_API_KEY=your_api_key_here
 
 ```bash
 sl auth login --key sl_xxxxxxxxxxxxx
-# Stored in ~/.config/simplelogin/config.yml
+# Stored in $XDG_CONFIG_HOME/simplelogin/config.yml (defaults to ~/.config/simplelogin/config.yml)
 ```
 
 Or interactively:
@@ -264,7 +264,7 @@ sl export data | jq '.aliases | length'
 
 ## Configuration
 
-Config file location: `~/.config/simplelogin/config.yml`
+Config file location: `$XDG_CONFIG_HOME/simplelogin/config.yml` (defaults to `~/.config/simplelogin/config.yml`)
 
 ```yaml
 api_key: sl_xxxxxxxxxxxxx
