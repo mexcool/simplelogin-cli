@@ -125,7 +125,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Fprint(os.Stderr, "\nSelect suffix number: ")
 		var input string
-		fmt.Scanln(&input)
+		_, _ = fmt.Scanln(&input)
 		idx, err := strconv.Atoi(strings.TrimSpace(input))
 		if err != nil || idx < 0 || idx >= len(opts.Suffixes) {
 			return fmt.Errorf("invalid suffix selection; enter a number between 0 and %d", len(opts.Suffixes)-1)

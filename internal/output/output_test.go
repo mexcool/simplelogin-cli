@@ -268,7 +268,7 @@ func TestPrintJQ_VerifyOutput(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	r.Close()
 
 	got := strings.TrimSpace(buf.String())
@@ -297,7 +297,7 @@ func TestPrintJQ_VerifyOutput_Number(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	r.Close()
 
 	got := strings.TrimSpace(buf.String())

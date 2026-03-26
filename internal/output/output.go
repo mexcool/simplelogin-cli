@@ -223,7 +223,7 @@ func ConfirmAction(prompt string) bool {
 	}
 	fmt.Fprintf(os.Stderr, "%s [y/N]: ", prompt)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
 }

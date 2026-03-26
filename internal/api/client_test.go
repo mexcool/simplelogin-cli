@@ -141,7 +141,7 @@ func TestResolveAliasID_EmailInput_Found(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -159,7 +159,7 @@ func TestResolveAliasID_EmailInput_NotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := AliasListResponse{Aliases: []Alias{}}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -188,7 +188,7 @@ func TestClient_GetUserInfo(t *testing.T) {
 			IsPremium: true,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -211,7 +211,7 @@ func TestClient_GetUserInfo(t *testing.T) {
 func TestClient_GetUserInfo_AuthError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		_, _ = w.Write([]byte(`{"error": "unauthorized"}`))
 	}))
 	defer srv.Close()
 
@@ -251,7 +251,7 @@ func TestClient_ListAliases(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -274,7 +274,7 @@ func TestClient_ToggleAlias(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"enabled": false}`))
+		_, _ = w.Write([]byte(`{"enabled": false}`))
 	}))
 	defer srv.Close()
 
@@ -297,7 +297,7 @@ func TestClient_DeleteAlias(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(`{"deleted": true}`))
+		_, _ = w.Write([]byte(`{"deleted": true}`))
 	}))
 	defer srv.Close()
 
@@ -311,7 +311,7 @@ func TestClient_DeleteAlias(t *testing.T) {
 func TestClient_DeleteAlias_NotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 
@@ -387,7 +387,7 @@ func TestClient_ListMailboxes(t *testing.T) {
 				{ID: 2, Email: "secondary@example.com", Default: false, Verified: true},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -451,7 +451,7 @@ func TestClient_UpdateAlias(t *testing.T) {
 		}
 
 		w.WriteHeader(200)
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 
@@ -486,7 +486,7 @@ func TestClient_ListAllAliases_Pagination(t *testing.T) {
 			resp = AliasListResponse{Aliases: []Alias{}}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -717,7 +717,7 @@ func TestClient_CreateCustomAlias(t *testing.T) {
 func TestClient_CreateCustomAlias_Error(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(403)
-		w.Write([]byte(`{"error":"premium required"}`))
+		_, _ = w.Write([]byte(`{"error":"premium required"}`))
 	}))
 	defer srv.Close()
 
@@ -753,7 +753,7 @@ func TestClient_DeleteMailbox_NoTransfer(t *testing.T) {
 			t.Errorf("expected no request body when transferTo is nil, got: %s", string(bodyBytes))
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(`{"deleted": true}`))
+		_, _ = w.Write([]byte(`{"deleted": true}`))
 	}))
 	defer srv.Close()
 
@@ -780,7 +780,7 @@ func TestClient_DeleteMailbox_WithTransfer(t *testing.T) {
 			t.Errorf("expected transfer_aliases_to=10, got %v", body.TransferAliasesTo)
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(`{"deleted": true}`))
+		_, _ = w.Write([]byte(`{"deleted": true}`))
 	}))
 	defer srv.Close()
 
@@ -795,7 +795,7 @@ func TestClient_DeleteMailbox_WithTransfer(t *testing.T) {
 func TestClient_DeleteMailbox_NotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 
@@ -839,7 +839,7 @@ func TestClient_GetAllAliasActivities_Pagination(t *testing.T) {
 			resp = ActivityResponse{Activities: []Activity{}}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -866,7 +866,7 @@ func TestClient_GetAllAliasActivities_Empty(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := ActivityResponse{Activities: []Activity{}}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -894,7 +894,7 @@ func TestClient_ExportData(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(rawData))
+		_, _ = w.Write([]byte(rawData))
 	}))
 	defer srv.Close()
 
@@ -911,7 +911,7 @@ func TestClient_ExportData(t *testing.T) {
 func TestClient_ExportData_Error(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
-		w.Write([]byte(`{"error":"unauthorized"}`))
+		_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
 	}))
 	defer srv.Close()
 
@@ -932,7 +932,7 @@ func TestClient_ExportAliases(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(csvData))
+		_, _ = w.Write([]byte(csvData))
 	}))
 	defer srv.Close()
 
@@ -949,7 +949,7 @@ func TestClient_ExportAliases(t *testing.T) {
 func TestClient_ExportAliases_Error(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
-		w.Write([]byte(`{"error":"internal server error"}`))
+		_, _ = w.Write([]byte(`{"error":"internal server error"}`))
 	}))
 	defer srv.Close()
 
