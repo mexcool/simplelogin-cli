@@ -28,7 +28,7 @@ func main() {
 	header := &doc.GenManHeader{
 		Title:   "SL",
 		Section: "1",
-		Date:    func() *time.Time { t := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC); return &t }(),
+		Date:    func() *time.Time { t := time.Now().UTC(); return &t }(),
 		Source:  "SimpleLogin CLI",
 		Manual:  "SimpleLogin CLI Manual",
 	}
