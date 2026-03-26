@@ -61,7 +61,7 @@ changelog:
       - Merge branch
 
 brews:
-  - name: sl
+  - name: simplelogin-cli
     repository:
       owner: mexcool
       name: homebrew-tap

@@ -12,8 +12,7 @@ A command-line interface for the [SimpleLogin](https://simplelogin.io) email ali
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew tap mexcool/tap
-brew install sl
+brew install mexcool/tap/simplelogin-cli
 ```
 
 ### Go install
