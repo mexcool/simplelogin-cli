@@ -86,7 +86,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	if err := client.DeleteContact(id); err != nil {
 		return err
 	}

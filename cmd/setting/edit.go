@@ -91,7 +91,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	if err := client.UpdateSettings(req); err != nil {
 		return err
 	}

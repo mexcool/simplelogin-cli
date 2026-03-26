@@ -44,7 +44,7 @@ func runView(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	settings, rawJSON, err := client.GetSettings()
 	if err != nil {
 		return err

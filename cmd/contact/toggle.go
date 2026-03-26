@@ -49,7 +49,7 @@ func runToggle(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	blocked, rawJSON, err := client.ToggleContact(id)
 	if err != nil {
 		return err

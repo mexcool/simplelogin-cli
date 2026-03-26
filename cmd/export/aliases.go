@@ -37,7 +37,7 @@ func runAliases(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	data, err := client.ExportAliases()
 	if err != nil {
 		return err

@@ -49,7 +49,7 @@ func runTrash(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client := api.NewClient(key)
+	client := api.NewClient(key, auth.GetAPIBase())
 	aliases, rawJSON, err := client.GetDomainTrash(id)
 	if err != nil {
 		return err
