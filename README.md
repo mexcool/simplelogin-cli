@@ -23,7 +23,9 @@ go install github.com/mexcool/simplelogin-cli/cmd/sl@latest
 
 ### GitHub Releases
 
-Download pre-built binaries for your platform from the [Releases](https://github.com/mexcool/simplelogin-cli/releases) page.
+Download pre-built binaries for your platform from the [Releases](https://github.com/mexcool/simplelogin-cli/releases) page. Each release includes both `sl` and `simplelogin` binaries.
+
+> **Note:** The primary command is `sl`. If that conflicts with another tool (e.g., the [steam locomotive](https://github.com/mtoyoda/sl)), use `simplelogin` instead — it's the same binary under a different name. All examples in this README use `sl` but `simplelogin` works identically.
 
 ### From source
 

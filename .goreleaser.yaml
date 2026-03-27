@@ -24,6 +24,23 @@ builds:
       - -trimpath
     ldflags:
       - -s -w -X main.version={{ .Version }} -X main.commit={{ .ShortCommit }} -X main.date={{ .Date }}
+  - id: simplelogin
+    main: ./cmd/sl
+    binary: simplelogin
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }} -X main.commit={{ .ShortCommit }} -X main.date={{ .Date }}
 
 archives:
   - id: default
@@ -73,5 +90,7 @@ brews:
     license: "MIT"
     install: |
       bin.install "sl"
+      bin.install "simplelogin"
     test: |
       system "#{bin}/sl", "--version"
+      system "#{bin}/simplelogin", "--version"

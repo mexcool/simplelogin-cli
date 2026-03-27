@@ -9,11 +9,13 @@ LDFLAGS := -s -w \
 
 build:
 	go build -ldflags="$(LDFLAGS)" -o bin/sl ./cmd/sl
+	cp bin/sl bin/simplelogin
 
 PREFIX ?= /usr/local
 install: build
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 755 bin/sl $(DESTDIR)$(PREFIX)/bin/sl
+	install -m 755 bin/simplelogin $(DESTDIR)$(PREFIX)/bin/simplelogin
 
 test:
 	go test ./...
