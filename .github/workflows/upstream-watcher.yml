@@ -1,0 +1,213 @@
+# Watches simple-login/app for API changes that affect this CLI.
+# Runs daily, compares upstream commits since last checkpoint,
+# uses Claude Code to analyze diffs, and creates issues for actionable changes.
+#
+# Auto-fixable issues get the "claude-fix" label. Because we use a PAT
+# for issue creation, the issues: [labeled] event fires naturally and
+# triggers on-issue-open.yml → claude-code.yml to implement + open a PR.
+#
+# Required secrets:
+#   ANTHROPIC_API_KEY  — for Claude Code analysis
+#   GH_PAT             — PAT with repo scope + branch protection bypass
+#                        (needed to commit checkpoint to main and to
+#                        create issues that trigger other workflows)
+
+name: Upstream Watcher
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # Daily at 8:00 UTC
+  workflow_dispatch: # Manual trigger
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  UPSTREAM_REPO: simple-login/app
+  UPSTREAM_BRANCH: master
+  CHECKPOINT_FILE: simplelogin_app_commit_checkpoint
+  MAX_ISSUES: 5
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "upstream-change" --color "0E8A16" \
+            --description "Change detected in upstream SimpleLogin app" 2>/dev/null || true
+          gh label create "claude-fix" --color "7057ff" \
+            --description "Ready for Claude auto-fix" 2>/dev/null || true
+
+      - name: Read checkpoint
+        id: checkpoint
+        run: |
+          if [ -f "$CHECKPOINT_FILE" ]; then
+            SHA=$(cat "$CHECKPOINT_FILE" | tr -d '[:space:]')
+            if [ -n "$SHA" ] && [ ${#SHA} -ge 40 ]; then
+              echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+              echo "Checkpoint: ${SHA:0:8}"
+            else
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              echo "Checkpoint file exists but is empty/invalid"
+            fi
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No checkpoint file (first run)"
+          fi
+
+      - name: Get latest upstream commit
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA=$(gh api "repos/$UPSTREAM_REPO/commits/$UPSTREAM_BRANCH" --jq '.sha')
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Latest upstream: ${SHA:0:8}"
+
+      - name: Determine action
+        id: action
+        run: |
+          if [ "${{ steps.checkpoint.outputs.exists }}" = "false" ]; then
+            echo "First run — saving checkpoint only"
+            echo "should_analyze=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.checkpoint.outputs.sha }}" = "${{ steps.latest.outputs.sha }}" ]; then
+            echo "No new commits"
+            echo "should_analyze=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_analyze=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch upstream diff
+        if: steps.action.outputs.should_analyze == 'true'
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CHECKPOINT="${{ steps.checkpoint.outputs.sha }}"
+          LATEST="${{ steps.latest.outputs.sha }}"
+          echo "Comparing ${CHECKPOINT:0:8}...${LATEST:0:8}"
+
+          mkdir -p /tmp/upstream-analysis
+
+          gh api "repos/$UPSTREAM_REPO/compare/${CHECKPOINT}...${LATEST}" \
+            > /tmp/upstream-analysis/comparison.json
+
+          # Commit summaries
+          jq '[.commits[] | {sha: .sha[0:8], message: .commit.message | split("\n")[0]}]' \
+            /tmp/upstream-analysis/comparison.json > /tmp/upstream-analysis/commits.json
+
+          # API-relevant file diffs only
+          jq '[.files[] | select(.filename |
+            test("^app/api/|^app/models|^app/alias_|^app/contact_|^app/custom_domain|^app/mailbox_|openapi|swagger|^docs/api"))
+            | {filename, status, additions, deletions, patch: (.patch // "binary or too large")}]' \
+            /tmp/upstream-analysis/comparison.json > /tmp/upstream-analysis/changes.json
+
+          CHANGE_COUNT=$(jq 'length' /tmp/upstream-analysis/changes.json)
+          COMMIT_COUNT=$(jq 'length' /tmp/upstream-analysis/commits.json)
+          echo "Found $COMMIT_COUNT commits, $CHANGE_COUNT API-relevant file changes"
+
+          if [ "$CHANGE_COUNT" -eq 0 ]; then
+            echo "has_relevant_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_relevant_changes=true" >> "$GITHUB_OUTPUT"
+
+            # Truncate patches if too large (keep under 80KB for Claude context)
+            CHANGES_SIZE=$(wc -c < /tmp/upstream-analysis/changes.json)
+            if [ "$CHANGES_SIZE" -gt 80000 ]; then
+              echo "Changes too large (${CHANGES_SIZE}B), truncating patches..."
+              jq '[.[] | .patch = (.patch | if length > 2000 then .[0:2000] + "\n... truncated" else . end)]' \
+                /tmp/upstream-analysis/changes.json > /tmp/upstream-analysis/changes_truncated.json
+              mv /tmp/upstream-analysis/changes_truncated.json /tmp/upstream-analysis/changes.json
+            fi
+          fi
+
+          # Context file for Claude
+          COMPARE_URL="https://github.com/$UPSTREAM_REPO/compare/${CHECKPOINT}...${LATEST}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          printf 'Upstream repo: %s\nRange: %s...%s\nCompare URL: %s\nWorkflow run: %s\n' \
+            "$UPSTREAM_REPO" "${CHECKPOINT:0:8}" "${LATEST:0:8}" "$COMPARE_URL" "$RUN_URL" \
+            > /tmp/upstream-analysis/context.txt
+
+      - name: Analyze with Claude and create issues
+        if: steps.action.outputs.should_analyze == 'true' && steps.diff.outputs.has_relevant_changes == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # PAT so that created issues trigger on-issue-open.yml naturally
+          github_token: ${{ secrets.GH_PAT }}
+          prompt: |
+            Analyze upstream SimpleLogin app changes for impact on this CLI tool.
+
+            Read these files for context:
+            - /tmp/upstream-analysis/context.txt — metadata (compare URL, workflow run URL)
+            - /tmp/upstream-analysis/changes.json — API-relevant file diffs
+            - /tmp/upstream-analysis/commits.json — upstream commit summaries
+            - internal/api/client.go — our current API client
+
+            Identify ONLY changes that directly affect this CLI:
+            1. New API endpoints we should support
+            2. Changed request parameters or response formats on endpoints we use
+            3. Deprecated or removed endpoints we still call
+            4. New features valuable enough to expose as CLI commands
+
+            Ignore: internal refactors, UI-only changes, tests, migrations without API behavior changes, dependency bumps.
+
+            For each finding, first check for duplicate open issues:
+              gh issue list --label "upstream-change" --state open --json title
+
+            Then create an issue:
+              gh issue create --title "upstream: <short title>" --body "<markdown body>" --label "upstream-change"
+
+            The markdown body must include:
+            - What changed upstream and in which files
+            - What needs to change in our CLI (specific methods/commands)
+            - Relevant code snippets
+            - A footer: "---\n*Detected by [upstream watcher](<run URL>) — [compare simple-login/app](<compare URL>)*"
+              (get URLs from /tmp/upstream-analysis/context.txt)
+
+            If the fix follows an existing pattern (e.g. adding a new API method + command),
+            also add the "claude-fix" label (append: --label "claude-fix").
+            The label will automatically trigger another workflow to implement it.
+
+            Maximum ${{ env.MAX_ISSUES }} issues per run.
+            DO NOT modify any source code files. Only read code and create issues.
+          claude_args: "--allowedTools Read,Grep,Glob,Bash"
+
+      - name: Discard any accidental code changes
+        if: always()
+        run: git checkout -- . 2>/dev/null || true
+
+      - name: Update checkpoint
+        if: always() && steps.latest.outputs.sha != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          NEW_SHA="${{ steps.latest.outputs.sha }}"
+
+          # Get current file SHA (needed for Contents API update)
+          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/$CHECKPOINT_FILE" \
+            --jq '.sha' 2>/dev/null || echo "")
+
+          ENCODED=$(echo -n "$NEW_SHA" | base64 -w0)
+
+          if [ -n "$FILE_SHA" ]; then
+            gh api "repos/${{ github.repository }}/contents/$CHECKPOINT_FILE" \
+              --method PUT \
+              -f "message=chore: update upstream checkpoint to ${NEW_SHA:0:8}" \
+              -f "content=$ENCODED" \
+              -f "sha=$FILE_SHA"
+          else
+            gh api "repos/${{ github.repository }}/contents/$CHECKPOINT_FILE" \
+              --method PUT \
+              -f "message=chore: init upstream checkpoint" \
+              -f "content=$ENCODED"
+          fi
+
+          echo "Checkpoint updated to ${NEW_SHA:0:8}"

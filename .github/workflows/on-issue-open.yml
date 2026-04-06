@@ -1,0 +1,66 @@
+# Orchestrates Claude Code to implement issues and open PRs.
+#
+# Three trigger paths:
+#   1. workflow_dispatch  — auto-triggered by upstream-watcher for fixable issues
+#   2. issues: [labeled]  — when a human adds the "claude-fix" label
+#   3. issue_comment       — when someone comments "@claude" on an issue
+#
+# Security: paths #2 and #3 verify the actor has write/admin/maintain
+# access to the repo, preventing unauthorized Claude usage.
+
+name: On Issue Open
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to implement"
+        required: true
+        type: string
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  authorize-and-resolve:
+    # Only run for valid triggers
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-fix')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    outputs:
+      issue_number: ${{ steps.resolve.outputs.number }}
+    steps:
+      - name: Verify actor has write access
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ACTOR="${{ github.actor }}"
+          PERM=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+
+          if [[ "$PERM" != "admin" && "$PERM" != "write" && "$PERM" != "maintain" ]]; then
+            echo "::error::User ${ACTOR} has '${PERM}' access — write access required. Aborting to prevent unauthorized Claude usage."
+            exit 1
+          fi
+          echo "User ${ACTOR} authorized (${PERM})"
+
+      - name: Resolve issue number
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ inputs.issue_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  fix:
+    needs: authorize-and-resolve
+    uses: ./.github/workflows/claude-code.yml
+    with:
+      issue_number: ${{ needs.authorize-and-resolve.outputs.issue_number }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

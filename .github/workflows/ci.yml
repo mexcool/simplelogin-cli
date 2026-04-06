@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "simplelogin_app_commit_checkpoint"
   pull_request:
 
 jobs:

@@ -1,0 +1,60 @@
+# Reusable workflow: runs Claude Code on an issue to implement changes and open a PR.
+#
+# Called by on-issue-open.yml (and indirectly by upstream-watcher.yml).
+# Not triggered directly — use on-issue-open.yml or comment "@claude" on an issue.
+#
+# Required secret: ANTHROPIC_API_KEY
+
+name: Claude Code (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      issue_number:
+        description: "Issue number to implement"
+        required: true
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Implement the changes described in issue #${{ inputs.issue_number }}.
+
+            First, read the issue:
+              gh issue view ${{ inputs.issue_number }}
+
+            Then read AGENTS.md for coding patterns and conventions.
+
+            Implementation steps:
+            1. Understand what upstream changed from the issue body
+            2. Add or update API methods in internal/api/client.go
+               - Return (typed, rawJSON, error) — rawJSON is the untouched API response
+            3. Add or update commands in cmd/<resource>/<verb>.go
+               - Every data command needs --json and --jq flags
+               - Include Short, Long, and Example fields
+            4. Register new commands in cmd/<resource>/<resource>.go
+            5. Run `make build && make test` to verify
+            6. Commit with a clear message and open a PR referencing #${{ inputs.issue_number }}
+          claude_args: "--allowedTools Bash,Read,Write,Edit,Glob,Grep"
