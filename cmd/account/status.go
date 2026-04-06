@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/mexcool/simplelogin-cli/internal/api"
 	"github.com/mexcool/simplelogin-cli/internal/auth"
@@ -97,7 +98,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stdout, "%s %s\n", output.Bold.Sprint("Premium:"), premium)
 
 	if info.InTrial {
-		fmt.Fprintf(os.Stdout, "%s %s\n", output.Bold.Sprint("Trial:"), output.Yellow.Sprint("active"))
+		trialLabel := output.Yellow.Sprint("active")
+		if info.TrialEndTimestamp != nil {
+			end := time.Unix(*info.TrialEndTimestamp, 0).UTC().Format("2006-01-02")
+			trialLabel = output.Yellow.Sprintf("active (ends %s)", end)
+		}
+		fmt.Fprintf(os.Stdout, "%s %s\n", output.Bold.Sprint("Trial:"), trialLabel)
 	}
 
 	fmt.Fprintln(os.Stdout)
