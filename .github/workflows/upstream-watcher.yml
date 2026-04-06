@@ -136,42 +136,80 @@ jobs:
           # PAT so that created issues trigger on-issue-open.yml naturally
           github_token: ${{ secrets.GH_PAT }}
           prompt: |
-            Analyze upstream SimpleLogin app changes for impact on this CLI tool.
+            You are reviewing upstream changes in the SimpleLogin web app to decide
+            whether our CLI needs updating. Be conservative — only flag changes that
+            a CLI user would actually notice or care about. Most upstream commits are
+            irrelevant to us.
 
-            Read these files for context:
-            - /tmp/upstream-analysis/context.txt — metadata (compare URL, workflow run URL)
-            - /tmp/upstream-analysis/changes.json — ALL changed files with diffs
+            ## Context files
+            - /tmp/upstream-analysis/context.txt — compare URL, workflow run URL
+            - /tmp/upstream-analysis/changes.json — all changed files with diffs
             - /tmp/upstream-analysis/commits.json — upstream commit summaries
-            - internal/api/client.go — our current API client
 
-            Review ALL changes and identify ONLY those that directly affect this CLI:
-            1. New API endpoints we should support
-            2. Changed request parameters or response formats on endpoints we use
-            3. Deprecated or removed endpoints we still call
-            4. New features valuable enough to expose as CLI commands
+            Also read our codebase to understand what we currently support:
+            - internal/api/client.go — API client (all HTTP methods and types)
+            - Browse cmd/ to see what commands exist and what they expose
 
-            Ignore: internal refactors, UI-only changes, tests, migrations without API behavior changes, dependency bumps.
+            ## What DOES warrant an issue
 
-            For each finding, first check for duplicate open issues:
-              gh issue list --label "upstream-change" --state open --json title
+            **Breaking changes** — an endpoint we call changed its URL, method,
+            required parameters, authentication, or response shape in a way that
+            would make our existing code send wrong requests or misparse responses.
+            This is the highest priority.
 
-            Then create an issue with ONLY the "upstream-change" label:
+            **New endpoints that unlock a useful CLI command** — e.g., a new CRUD
+            resource (like if SimpleLogin added "rules" or "directories" with full
+            API support). Must be something a user would plausibly run from a terminal.
+            A single new field on an existing response does NOT count unless it
+            changes behavior (e.g., a new required field).
+
+            **Removed or deprecated endpoints we still call** — if upstream deletes
+            an API route or marks it deprecated with a replacement.
+
+            ## What does NOT warrant an issue
+
+            - A new optional field added to a response we already handle (like
+              trial_end_timestamp on /api/user_info). Our --json flag passes through
+              raw JSON anyway, so users already get new fields for free.
+            - Internal refactors, model changes that don't affect API responses,
+              admin-only endpoints, UI/dashboard changes, webhook changes,
+              payment/billing internals, test changes, dependency bumps, CI changes.
+            - Changes to endpoints we don't use and that aren't useful as CLI commands
+              (e.g., OAuth flows, FIDO/WebAuthn, Paddle/Coinbase webhooks, Apple IAP).
+            - Performance optimizations or rate limit changes with no API contract change.
+
+            ## Before creating an issue
+
+            1. Read our API client and commands to confirm we actually use the affected
+               endpoint, or that the new endpoint is genuinely useful as a CLI command.
+            2. Check for duplicates: gh issue list --label "upstream-change" --state open --json title
+            3. If you're unsure whether a change matters, err on the side of NOT creating
+               an issue. False negatives are better than noise.
+
+            ## Issue format
+
+            Create with ONLY the "upstream-change" label:
               gh issue create --title "upstream: <short title>" --body "<markdown body>" --label "upstream-change"
 
-            The markdown body must include:
-            - What changed upstream and in which files
-            - What needs to change in our CLI (specific methods/commands)
-            - Relevant code snippets
-            - A footer: "---\n*Detected by [upstream watcher](<run URL>) — [compare simple-login/app](<compare URL>)*"
-              (get URLs from /tmp/upstream-analysis/context.txt)
+            The body must include:
+            - What changed upstream (files, commit, diff snippet)
+            - Why it matters to CLI users (breaking? new capability?)
+            - What specifically needs to change in our code (file paths, method names)
+            - A footer with links from /tmp/upstream-analysis/context.txt:
+              ---
+              *Detected by [upstream watcher](<run URL>) — [compare simple-login/app](<compare URL>)*
 
-            If the fix follows an existing pattern (e.g. adding a new API method + command),
-            add the "claude-fix" label SEPARATELY after creation (this triggers the fix workflow exactly once):
+            If the fix follows an existing pattern in our codebase (e.g., adding a new
+            API method + cobra command like we've done before), add the "claude-fix"
+            label SEPARATELY after creation:
               gh issue edit <issue number> --add-label "claude-fix"
-            IMPORTANT: Do NOT include "claude-fix" in the gh issue create command. Always add it separately.
+            IMPORTANT: Do NOT include "claude-fix" in the gh issue create command.
 
-            Maximum ${{ env.MAX_ISSUES }} issues per run.
-            DO NOT modify any source code files. Only read code and create issues.
+            ## Constraints
+            - Maximum ${{ env.MAX_ISSUES }} issues per run.
+            - DO NOT modify any source code files. Only read code and create issues.
+            - If nothing warrants an issue, create nothing. That's the expected outcome
+              most weeks.
           claude_args: "--allowedTools Read,Grep,Glob,Bash"
 
       - name: Discard any accidental code changes
