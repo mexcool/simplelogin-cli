@@ -20,6 +20,26 @@ Release: `git tag vX.Y.Z && git push origin vX.Y.Z` — triggers goreleaser (bui
 
 Branch protection is enabled on `main` — all changes go through PRs with CI passing. Repo admins can bypass.
 
+## Upstream Tracking
+
+Three workflows automatically track `simple-login/app` for API changes and implement fixes:
+
+| Workflow | Trigger | Role |
+|----------|---------|------|
+| `upstream-watcher.yml` | Weekly cron (Mon 8am UTC) + manual | Fetches upstream diffs, Claude analyzes all changed files, creates issues |
+| `on-issue-open.yml` | `issues: [labeled]` / `@claude` comment / `workflow_dispatch` | Security gate (verifies actor has write access) + orchestrator |
+| `claude-code.yml` | `workflow_call` (reusable) | Implements the issue and opens a PR |
+
+**Flow:** watcher creates issue with `upstream-change` label → if auto-fixable, adds `claude-fix` label separately → `on-issue-open` triggers (exactly once, on the `claude-fix` label event) → calls `claude-code.yml` → PR opened.
+
+**Checkpoint:** `simplelogin_app_commit_checkpoint` on `main` stores the last analyzed upstream commit SHA. Updated via `GH_PAT` (bypasses branch protection). `ci.yml` has `paths-ignore` for this file.
+
+**Security:** `on-issue-open.yml` verifies `github.actor` has write/admin/maintain access before running Claude. The `GH_PAT` is only used in the watcher workflow, not in the fix pipeline.
+
+**Secrets required:** `ANTHROPIC_API_KEY`, `GH_PAT` (repo scope + branch protection bypass).
+
+**Manual triggers:** `gh workflow run upstream-watcher.yml` to check upstream now. `gh workflow run on-issue-open.yml -f issue_number=N` to implement a specific issue. Or comment `@claude` on any issue.
+
 ## Architecture
 
 This is a cobra-based CLI (`sl`) for the SimpleLogin API. Binary entrypoint is `cmd/sl/main.go`.

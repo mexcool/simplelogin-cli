@@ -329,6 +329,31 @@ api_base: https://sl.example.com  # only for self-hosted instances
 op_ref: op://Personal/SimpleLogin API Key/credential
 ```
 
+## Automated Upstream Tracking
+
+This project automatically tracks the [SimpleLogin app](https://github.com/simple-login/app) for API changes that affect the CLI.
+
+**How it works:**
+
+1. A weekly GitHub Actions workflow fetches new commits from `simple-login/app`
+2. Claude Code analyzes all changes and creates issues for anything that affects the CLI (new endpoints, changed parameters, deprecated APIs)
+3. If the fix follows existing patterns, Claude Code automatically implements the changes and opens a PR
+
+**Manual triggers:**
+
+```bash
+# Check upstream now (instead of waiting for the weekly cron)
+gh workflow run upstream-watcher.yml
+
+# Have Claude implement a specific issue
+gh workflow run on-issue-open.yml -f issue_number=N
+
+# Or comment on any issue
+# @claude please implement this
+```
+
+Issues created by the watcher are labeled `upstream-change`. Auto-fixable ones also get the `claude-fix` label which triggers the implementation pipeline.
+
 ## Related Projects
 
 Other community-built SimpleLogin CLIs:
