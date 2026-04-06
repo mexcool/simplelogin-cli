@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/mexcool/simplelogin-cli/internal/api"
 	intauth "github.com/mexcool/simplelogin-cli/internal/auth"
@@ -70,6 +71,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		data["email"] = info.Email
 		data["is_premium"] = info.IsPremium
 		data["in_trial"] = info.InTrial
+		data["trial_end_timestamp"] = info.TrialEndTimestamp
 		data["key_source"] = source
 		data["key"] = intauth.MaskKey(key)
 		data["api_url"] = apiBase
@@ -90,6 +92,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		premium = output.Green.Sprint("yes")
 	}
 	fmt.Fprintf(os.Stderr, "Premium:           %s\n", premium)
+
+	if info.InTrial && info.TrialEndTimestamp != nil {
+		trialEnd := time.Unix(*info.TrialEndTimestamp, 0).UTC().Format("2006-01-02")
+		fmt.Fprintf(os.Stderr, "Trial ends:        %s\n", trialEnd)
+	}
 
 	return nil
 }

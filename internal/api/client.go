@@ -174,12 +174,13 @@ func HandleError(statusCode int, body []byte, action string) error {
 
 // UserInfo represents user information.
 type UserInfo struct {
-	Name            string `json:"name"`
-	Email           string `json:"email"`
-	IsPremium       bool   `json:"is_premium"`
-	InTrial         bool   `json:"in_trial"`
-	ProfilePicURL   string `json:"profile_picture_url"`
-	MaxAliasFreePlan int   `json:"max_alias_free_plan"`
+	Name              string `json:"name"`
+	Email             string `json:"email"`
+	IsPremium         bool   `json:"is_premium"`
+	InTrial           bool   `json:"in_trial"`
+	TrialEndTimestamp *int64 `json:"trial_end_timestamp"`
+	ProfilePicURL     string `json:"profile_picture_url"`
+	MaxAliasFreePlan  int    `json:"max_alias_free_plan"`
 }
 
 // GetUserInfo retrieves the current user's information.
