@@ -155,7 +155,7 @@ jobs:
             For each finding, first check for duplicate open issues:
               gh issue list --label "upstream-change" --state open --json title
 
-            Then create an issue:
+            Then create an issue with ONLY the "upstream-change" label:
               gh issue create --title "upstream: <short title>" --body "<markdown body>" --label "upstream-change"
 
             The markdown body must include:
@@ -166,8 +166,9 @@ jobs:
               (get URLs from /tmp/upstream-analysis/context.txt)
 
             If the fix follows an existing pattern (e.g. adding a new API method + command),
-            also add the "claude-fix" label (append: --label "claude-fix").
-            The label will automatically trigger another workflow to implement it.
+            add the "claude-fix" label SEPARATELY after creation (this triggers the fix workflow exactly once):
+              gh issue edit <issue number> --add-label "claude-fix"
+            IMPORTANT: Do NOT include "claude-fix" in the gh issue create command. Always add it separately.
 
             Maximum ${{ env.MAX_ISSUES }} issues per run.
             DO NOT modify any source code files. Only read code and create issues.

@@ -35,7 +35,7 @@ jobs:
     # Only run for valid triggers
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-fix')) ||
+      (github.event_name == 'issues' && github.event.label.name == 'claude-fix') ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
     outputs:
