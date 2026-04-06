@@ -22,6 +22,14 @@ on:
   issue_comment:
     types: [created]
 
+# Must grant all permissions the reusable claude-code.yml needs,
+# otherwise the run fails with startup_failure.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
 jobs:
   authorize-and-resolve:
     # Only run for valid triggers
