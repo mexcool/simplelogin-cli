@@ -1,5 +1,5 @@
 # Watches simple-login/app for API changes that affect this CLI.
-# Runs daily, compares upstream commits since last checkpoint,
+# Runs weekly, compares upstream commits since last checkpoint,
 # uses Claude Code to analyze diffs, and creates issues for actionable changes.
 #
 # Auto-fixable issues get the "claude-fix" label. Because we use a PAT
@@ -16,7 +16,7 @@ name: Upstream Watcher
 
 on:
   schedule:
-    - cron: "0 8 * * *" # Daily at 8:00 UTC
+    - cron: "0 8 * * 1" # Weekly, Mondays at 8:00 UTC
   workflow_dispatch: # Manual trigger
 
 permissions:
