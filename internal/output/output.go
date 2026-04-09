@@ -18,6 +18,7 @@ var (
 	Yellow = color.New(color.FgYellow)
 	Bold   = color.New(color.Bold)
 	Cyan   = color.New(color.FgCyan)
+	Dim    = color.New(color.Faint)
 )
 
 // PrintError prints an error message to stderr in red.
@@ -33,6 +34,11 @@ func PrintSuccess(format string, a ...interface{}) {
 // PrintWarning prints a warning message to stderr in yellow.
 func PrintWarning(format string, a ...interface{}) {
 	Yellow.Fprintf(os.Stderr, format+"\n", a...)
+}
+
+// PrintHint prints a contextual next-step hint to stderr in dim text.
+func PrintHint(format string, a ...interface{}) {
+	Dim.Fprintf(os.Stderr, "Hint: "+format+"\n", a...)
 }
 
 // PrintJSON pretty-prints JSON data to stdout.
@@ -199,7 +205,9 @@ func StringOrEmpty(s *string) string {
 	return *s
 }
 
-// Truncate truncates a string to maxLen characters.
+// Truncate truncates a string to maxLen characters, appending a size hint
+// showing the original total length (e.g., "prefix... [42]").
+// Falls back to plain "..." when maxLen is too small for the hint.
 func Truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
@@ -207,7 +215,80 @@ func Truncate(s string, maxLen int) string {
 	if maxLen < 4 {
 		return s[:maxLen]
 	}
+	// Try to fit "... [total]" suffix
+	suffix := fmt.Sprintf("... [%d]", len(s))
+	if len(suffix)+1 <= maxLen {
+		return s[:maxLen-len(suffix)] + suffix
+	}
+	// maxLen too small for size hint — plain truncation
 	return s[:maxLen-3] + "..."
+}
+
+// SelectColumns returns the column indices matching a comma-separated fields
+// string. If fields is empty, all indices are returned. Matching is
+// case-insensitive and normalizes spaces to hyphens (e.g., "Reverse Alias"
+// matches "reverse-alias"). Unrecognized field names are reported via
+// PrintWarning and skipped.
+func SelectColumns(headers []string, fields string) []int {
+	if fields == "" {
+		indices := make([]int, len(headers))
+		for i := range headers {
+			indices[i] = i
+		}
+		return indices
+	}
+
+	normalize := func(s string) string {
+		return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(s), " ", "-"))
+	}
+
+	headerMap := make(map[string]int, len(headers))
+	for i, h := range headers {
+		headerMap[normalize(h)] = i
+	}
+
+	var indices []int
+	var unknown []string
+	for _, f := range strings.Split(fields, ",") {
+		f = normalize(f)
+		if f == "" {
+			continue
+		}
+		if idx, ok := headerMap[f]; ok {
+			indices = append(indices, idx)
+		} else {
+			unknown = append(unknown, f)
+		}
+	}
+
+	if len(unknown) > 0 {
+		available := make([]string, len(headers))
+		for i, h := range headers {
+			available[i] = normalize(h)
+		}
+		PrintWarning("Unknown fields: %s (available: %s)", strings.Join(unknown, ", "), strings.Join(available, ", "))
+	}
+
+	if len(indices) == 0 {
+		// All fields invalid — show all columns as fallback
+		indices = make([]int, len(headers))
+		for i := range headers {
+			indices[i] = i
+		}
+	}
+
+	return indices
+}
+
+// FilterRow returns only the elements at the given column indices.
+func FilterRow(row []string, indices []int) []string {
+	out := make([]string, len(indices))
+	for i, idx := range indices {
+		if idx < len(row) {
+			out[i] = row[idx]
+		}
+	}
+	return out
 }
 
 // IsInteractive reports whether stdin is an interactive terminal.

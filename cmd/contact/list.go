@@ -37,10 +37,11 @@ Accepts either a numeric alias ID or the full alias email address.`,
 }
 
 var (
-	listPage int
-	listAll  bool
-	listJSON bool
-	listJQ   string
+	listPage   int
+	listAll    bool
+	listJSON   bool
+	listJQ     string
+	listFields string
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	listCmd.Flags().BoolVar(&listAll, "all", false, "Fetch all pages")
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
 	listCmd.Flags().StringVar(&listJQ, "jq", "", "Apply jq expression to JSON output")
+	listCmd.Flags().StringVar(&listFields, "fields", "", "Comma-separated columns to show (e.g. id,contact,blocked)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -76,7 +78,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			return output.PrintJSON(data)
 		}
 
-		printContactTable(contacts)
+		printContactTable(contacts, listFields)
 		return nil
 	}
 
@@ -92,25 +94,28 @@ func runList(cmd *cobra.Command, args []string) error {
 		return output.PrintJSON(rawJSON)
 	}
 
-	printContactTable(contacts)
+	printContactTable(contacts, listFields)
 	return nil
 }
 
-func printContactTable(contacts []api.Contact) {
+func printContactTable(contacts []api.Contact, fields string) {
 	if len(contacts) == 0 {
 		output.PrintWarning("No contacts found")
 		return
 	}
 
-	table := output.NewTable(os.Stdout, []string{"ID", "Contact", "Reverse Alias", "Blocked", "Created"})
+	headers := []string{"ID", "Contact", "Reverse Alias", "Blocked", "Created"}
+	indices := output.SelectColumns(headers, fields)
+	table := output.NewTable(os.Stdout, output.FilterRow(headers, indices))
 	for _, c := range contacts {
-		table.Append([]string{
+		row := []string{
 			fmt.Sprintf("%d", c.ID),
 			c.Contact,
 			output.Truncate(c.ReverseAliasAddress, 50),
 			output.BoolToStatus(c.BlockForward),
 			c.CreationDate,
-		})
+		}
+		table.Append(output.FilterRow(row, indices))
 	}
 	table.Render()
 }

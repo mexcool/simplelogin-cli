@@ -109,6 +109,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 
 		output.PrintSuccess("Created alias: %s", alias.Email)
+		output.PrintHint("sl alias view %d", alias.ID)
 		fmt.Println(alias.Email)
 		return nil
 	}
@@ -200,6 +201,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Created alias: %s", alias.Email)
+	output.PrintHint("sl alias view %d", alias.ID)
 	fmt.Println(alias.Email)
 	return nil
 }

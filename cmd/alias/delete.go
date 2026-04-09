@@ -107,6 +107,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return output.PrintJSON(data)
 	}
 	output.PrintSuccess("Alias deleted")
+	output.PrintHint("sl alias list")
 	fmt.Println(id)
 	return nil
 }

@@ -130,6 +130,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return output.PrintJSON(data)
 	}
 	output.PrintSuccess("Mailbox deleted")
+	output.PrintHint("sl mailbox list")
 	fmt.Println(id)
 	return nil
 }

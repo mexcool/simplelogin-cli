@@ -50,6 +50,7 @@ var (
 	listAll      bool
 	listJSON     bool
 	listJQ       string
+	listFields   string
 )
 
 func init() {
@@ -61,6 +62,7 @@ func init() {
 	listCmd.Flags().BoolVar(&listAll, "all", false, "Fetch all pages")
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
 	listCmd.Flags().StringVar(&listJQ, "jq", "", "Apply jq expression to JSON output")
+	listCmd.Flags().StringVar(&listFields, "fields", "", "Comma-separated columns to show (e.g. id,email,status)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -85,7 +87,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			return output.PrintJSON(data)
 		}
 
-		printAliasTable(aliases)
+		printAliasTable(aliases, listFields)
 		output.PrintSuccess("\nTotal: %d aliases", len(aliases))
 		return nil
 	}
@@ -102,17 +104,28 @@ func runList(cmd *cobra.Command, args []string) error {
 		return output.PrintJSON(rawJSON)
 	}
 
-	printAliasTable(aliases)
+	printAliasTable(aliases, listFields)
 	output.PrintSuccess("\nPage %d, %d aliases shown", listPage, len(aliases))
+	if len(aliases) == 20 {
+		output.PrintHint("sl alias list --page %d  or  sl alias list --all", listPage+1)
+	}
 	return nil
 }
 
-func printAliasTable(aliases []api.Alias) {
-	table := output.NewTable(os.Stdout, []string{"ID", "Email", "Status", "Fwd", "Block", "Reply", "Pinned", "Note"})
+func printAliasTable(aliases []api.Alias, fields string) {
+	if len(aliases) == 0 {
+		output.PrintWarning("No aliases found")
+		output.PrintHint("sl alias create --random")
+		return
+	}
+
+	headers := []string{"ID", "Email", "Status", "Fwd", "Block", "Reply", "Pinned", "Note"}
+	indices := output.SelectColumns(headers, fields)
+	table := output.NewTable(os.Stdout, output.FilterRow(headers, indices))
 	for _, a := range aliases {
 		note := output.StringOrEmpty(a.Note)
 		note = output.Truncate(note, 30)
-		table.Append([]string{
+		row := []string{
 			strconv.Itoa(a.ID),
 			a.Email,
 			output.EnabledStatus(a.Enabled),
@@ -121,7 +134,8 @@ func printAliasTable(aliases []api.Alias) {
 			fmt.Sprintf("%d", a.NbReply),
 			output.BoolToStatus(a.Pinned),
 			note,
-		})
+		}
+		table.Append(output.FilterRow(row, indices))
 	}
 	table.Render()
 }

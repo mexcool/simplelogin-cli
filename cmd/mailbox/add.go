@@ -59,6 +59,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Mailbox added. Check %s for a verification email.", args[0])
+	output.PrintHint("sl mailbox list")
 	fmt.Println(mailbox.ID)
 	return nil
 }

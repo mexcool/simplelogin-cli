@@ -75,6 +75,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	} else {
 		output.PrintSuccess("Contact added")
 	}
+	output.PrintHint("sl contact list %s", args[0])
 	fmt.Printf("Reverse alias: %s\n", contact.ReverseAliasAddress)
 	return nil
 }

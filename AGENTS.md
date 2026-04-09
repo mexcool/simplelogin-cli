@@ -106,16 +106,36 @@ if createJSON || createJQ != "" {
 
 **Self-documenting via `--help`.** Every command must have `Short`, `Long`, and `Example` fields. Delete commands must support `--yes` to skip confirmation and `--dry-run` to preview.
 
+## AXI Compliance
+
+This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md/) standard for agent-friendly CLIs. Two skills from the [`cli-dev` plugin](https://github.com/mexcool/claude-code-toolkit) are available for auditing and improving CLI design:
+
+- **`/cli-dev:axi`** — Deep AXI spec audit: token efficiency, `--fields`, truncation hints, content-first, contextual disclosure, structured errors, empty states
+- **`/cli-dev:cursor-cli-dev`** — Practical checklist: non-interactive flags, `--dry-run`/`--yes`, idempotency, actionable errors, predictable structure, stdin/pipeline support
+
+Use `/cli-dev:axi` for spec-level audits and `/cli-dev:cursor-cli-dev` when designing new commands or reviewing CLI ergonomics. Key AXI patterns already implemented:
+
+- **Content first:** `sl alias`, `sl mailbox`, `sl domain` show live data (not help) when invoked with no subcommand
+- **`--fields` flag:** All list commands accept `--fields id,email,...` for table column projection (uses `output.SelectColumns`/`FilterRow`)
+- **Truncation with size hints:** `output.Truncate()` appends `... [N]` showing total original length
+- **Contextual disclosure:** Mutation commands print a `Hint:` with a logical next-step command via `output.PrintHint()`; empty lists suggest creation commands; paginated lists hint at `--page N` or `--all`
+- **Definitive empty states:** Every list command prints an explicit warning when results are empty
+- **Structured JSON errors:** When `--json` is active and a command fails, a `{"error":"...","code":N}` envelope is emitted to stdout (handled in `main.go` via `cmd.ExecutedCmd()`)
+
+When adding or modifying commands, maintain these patterns. Run `/cli-dev:axi` periodically to check for regressions.
+
 ## Adding a New Command
 
 1. Create `cmd/<resource>/<verb>.go` — define `var xxxCmd` with `Use`, `Short`, `Long`, `Example`, `Args`, `RunE`
 2. Define flag vars at package level, register them in `init()`
 3. In `RunE`: call `auth.GetAPIKey()`, then `api.NewClient(key, auth.GetAPIBase())`
 4. Add `--json` (bool) and `--jq` (string) flags. Branch output on them.
-5. If the API method doesn't exist yet, add it to `internal/api/client.go` returning `(typed, rawJSON, error)`
-6. Register the command in `cmd/<resource>/<resource>.go` via `Cmd.AddCommand(xxxCmd)`
-7. Add an `Aliases` field if a short alias makes sense (`ls`, `rm`, `info`)
-8. Run `go build ./...`, `go test ./...`, `go vet ./...`
+5. For list commands: add `--fields` flag, use `output.SelectColumns`/`FilterRow` for table rendering, handle empty state with `output.PrintWarning`
+6. For mutation commands: add `output.PrintHint(...)` after success with a contextual next-step command
+7. If the API method doesn't exist yet, add it to `internal/api/client.go` returning `(typed, rawJSON, error)`
+8. Register the command in `cmd/<resource>/<resource>.go` via `Cmd.AddCommand(xxxCmd)`
+9. Add an `Aliases` field if a short alias makes sense (`ls`, `rm`, `info`)
+10. Run `go build ./...`, `go test ./...`, `go vet ./...`
 
 ## Non-Obvious Things
 

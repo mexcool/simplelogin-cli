@@ -19,6 +19,10 @@ import (
 
 var verbose bool
 
+// executedCmd captures the command that ran, for post-error inspection (e.g.,
+// checking whether --json was active when an error occurred).
+var executedCmd *cobra.Command
+
 var rootCmd = &cobra.Command{
 	Use:   "sl",
 	Short: "SimpleLogin CLI - manage email aliases from the terminal",
@@ -38,12 +42,20 @@ Authentication:
 Output:
   By default, commands display colored table output. Use --json for
   machine-readable JSON output, or --jq to filter JSON with jq expressions.`,
-	SilenceUsage: true,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		executedCmd = cmd
 		if verbose || os.Getenv("SL_VERBOSE") == "1" || os.Getenv("SL_DEBUG") == "1" {
 			api.Verbose = true
 		}
 	},
+}
+
+// ExecutedCmd returns the command that was actually executed, or nil if
+// execution failed before PersistentPreRun (e.g., flag/arg validation).
+func ExecutedCmd() *cobra.Command {
+	return executedCmd
 }
 
 // SetVersionInfo sets the version string shown by --version, including

@@ -77,6 +77,7 @@ func setAliasState(idOrEmail string, wantEnabled bool, jsonFlag bool, jqExpr str
 			return output.PrintJSON(rawJSON)
 		}
 		output.PrintSuccess("Alias %s is already %s", idOrEmail, verb)
+		output.PrintHint("sl alias view %s", idOrEmail)
 		fmt.Printf("enabled=%v\n", alias.Enabled)
 		return nil
 	}
@@ -99,6 +100,7 @@ func setAliasState(idOrEmail string, wantEnabled bool, jsonFlag bool, jqExpr str
 	} else {
 		output.PrintWarning("Alias %s is now disabled", idOrEmail)
 	}
+	output.PrintHint("sl alias view %s", idOrEmail)
 	fmt.Printf("enabled=%v\n", enabled)
 	return nil
 }

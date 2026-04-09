@@ -100,6 +100,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return output.PrintJSON(data)
 	}
 	output.PrintSuccess("Contact deleted")
+	output.PrintHint("sl contact list <alias-id>")
 	fmt.Println(id)
 	return nil
 }
