@@ -102,6 +102,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Alias updated")
+	output.PrintHint("sl alias view %s", args[0])
 
 	if editJQ != "" || editJSON {
 		_, rawJSON, err := client.GetAlias(id)

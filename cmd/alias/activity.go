@@ -37,10 +37,11 @@ Accepts either a numeric alias ID or the full alias email address.`,
 }
 
 var (
-	activityPage int
-	activityAll  bool
-	activityJSON bool
-	activityJQ   string
+	activityPage   int
+	activityAll    bool
+	activityJSON   bool
+	activityJQ     string
+	activityFields string
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	activityCmd.Flags().BoolVar(&activityAll, "all", false, "Fetch all pages")
 	activityCmd.Flags().BoolVar(&activityJSON, "json", false, "Output as JSON")
 	activityCmd.Flags().StringVar(&activityJQ, "jq", "", "Apply jq expression to JSON output")
+	activityCmd.Flags().StringVar(&activityFields, "fields", "", "Comma-separated columns to show (e.g. action,from,to)")
 }
 
 func runActivity(cmd *cobra.Command, args []string) error {
@@ -76,7 +78,7 @@ func runActivity(cmd *cobra.Command, args []string) error {
 			return output.PrintJSON(data)
 		}
 
-		printActivityTable(activities)
+		printActivityTable(activities, activityFields)
 		return nil
 	}
 
@@ -92,25 +94,28 @@ func runActivity(cmd *cobra.Command, args []string) error {
 		return output.PrintJSON(rawJSON)
 	}
 
-	printActivityTable(activities)
+	printActivityTable(activities, activityFields)
 	return nil
 }
 
-func printActivityTable(activities []api.Activity) {
+func printActivityTable(activities []api.Activity, fields string) {
 	if len(activities) == 0 {
 		output.PrintWarning("No activities found")
 		return
 	}
 
-	table := output.NewTable(os.Stdout, []string{"Action", "From", "To", "Time"})
+	headers := []string{"Action", "From", "To", "Time"}
+	indices := output.SelectColumns(headers, fields)
+	table := output.NewTable(os.Stdout, output.FilterRow(headers, indices))
 	for _, a := range activities {
 		ts := time.Unix(a.Timestamp, 0).Format("2006-01-02 15:04")
-		table.Append([]string{
+		row := []string{
 			a.Action,
 			output.Truncate(a.From, 40),
 			output.Truncate(a.To, 40),
 			ts,
-		})
+		}
+		table.Append(output.FilterRow(row, indices))
 	}
 	table.Render()
 	fmt.Fprintf(os.Stderr, "\n%d activities shown\n", len(activities))

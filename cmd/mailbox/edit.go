@@ -92,6 +92,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Mailbox updated")
+	output.PrintHint("sl mailbox list")
 
 	if editJQ != "" || editJSON {
 		mailboxes, _, err := client.ListMailboxes()

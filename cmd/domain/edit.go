@@ -118,6 +118,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintSuccess("Domain updated")
+	output.PrintHint("sl domain view %s", args[0])
 
 	if editJQ != "" || editJSON {
 		_, rawJSON, err := client.GetCustomDomain(id)

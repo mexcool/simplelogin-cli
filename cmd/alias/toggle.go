@@ -70,6 +70,7 @@ func runToggle(cmd *cobra.Command, args []string) error {
 	} else {
 		output.PrintWarning("Alias %s is now disabled", args[0])
 	}
+	output.PrintHint("sl alias view %s", args[0])
 	fmt.Printf("enabled=%v\n", enabled)
 	return nil
 }

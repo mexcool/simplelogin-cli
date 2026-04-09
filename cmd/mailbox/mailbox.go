@@ -5,6 +5,7 @@ import (
 )
 
 // Cmd is the mailbox parent command.
+// Running "sl mailbox" with no subcommand lists mailboxes (content-first).
 var Cmd = &cobra.Command{
 	Use:   "mailbox",
 	Short: "Manage mailboxes",
@@ -17,6 +18,9 @@ aliases to different mailboxes.
 Each mailbox must be verified before it can receive forwarded emails.
 One mailbox is marked as the default, which is used for new aliases
 when no mailbox is explicitly specified.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runList(cmd, args)
+	},
 }
 
 func init() {

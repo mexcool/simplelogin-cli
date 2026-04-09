@@ -29,13 +29,15 @@ be recovered by contacting SimpleLogin support.`,
 }
 
 var (
-	trashJSON bool
-	trashJQ   string
+	trashJSON   bool
+	trashJQ     string
+	trashFields string
 )
 
 func init() {
 	trashCmd.Flags().BoolVar(&trashJSON, "json", false, "Output as JSON")
 	trashCmd.Flags().StringVar(&trashJQ, "jq", "", "Apply jq expression to JSON output")
+	trashCmd.Flags().StringVar(&trashFields, "fields", "", "Comma-separated columns to show (e.g. alias,deleted)")
 }
 
 func runTrash(cmd *cobra.Command, args []string) error {
@@ -67,9 +69,12 @@ func runTrash(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	table := output.NewTable(os.Stdout, []string{"Alias", "Deleted"})
+	headers := []string{"Alias", "Deleted"}
+	indices := output.SelectColumns(headers, trashFields)
+	table := output.NewTable(os.Stdout, output.FilterRow(headers, indices))
 	for _, a := range aliases {
-		table.Append([]string{a.Alias, a.DeletionDate})
+		row := []string{a.Alias, a.DeletionDate}
+		table.Append(output.FilterRow(row, indices))
 	}
 	table.Render()
 	return nil

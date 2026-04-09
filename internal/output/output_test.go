@@ -68,13 +68,17 @@ func TestTruncate(t *testing.T) {
 	}{
 		{"short", 10, "short"},
 		{"exact", 5, "exact"},
-		{"hello world, this is long", 10, "hello w..."},
+		// Size hint fits: "... [25]" = 8 chars, leaves 2 chars of prefix
+		{"hello world, this is long", 10, "he... [25]"},
 		{"abc", 3, "abc"},
+		// maxLen=5, suffix "... [6]" = 7 chars > 5, falls back to plain "..."
 		{"abcdef", 5, "ab..."},
 		{"hello", 0, ""},
 		{"hello", 1, "h"},
 		{"hello", 2, "he"},
 		{"hello", 3, "hel"},
+		// Size hint with larger maxLen
+		{"this is a much longer note that should be truncated", 30, "this is a much longer ... [51]"},
 	}
 	for _, tt := range tests {
 		got := Truncate(tt.input, tt.maxLen)
@@ -307,6 +311,63 @@ func TestPrintJQ_VerifyOutput_Number(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// SelectColumns / FilterRow
+// ---------------------------------------------------------------------------
+
+func TestSelectColumns_Empty(t *testing.T) {
+	headers := []string{"ID", "Email", "Status"}
+	got := SelectColumns(headers, "")
+	want := []int{0, 1, 2}
+	if len(got) != len(want) {
+		t.Fatalf("SelectColumns(empty) = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("SelectColumns(empty)[%d] = %d, want %d", i, got[i], want[i])
+		}
+	}
+}
+
+func TestSelectColumns_Subset(t *testing.T) {
+	headers := []string{"ID", "Email", "Status", "Note"}
+	got := SelectColumns(headers, "id,note")
+	want := []int{0, 3}
+	if len(got) != len(want) {
+		t.Fatalf("SelectColumns = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("SelectColumns[%d] = %d, want %d", i, got[i], want[i])
+		}
+	}
+}
+
+func TestSelectColumns_CaseInsensitive(t *testing.T) {
+	headers := []string{"Reverse Alias", "Blocked"}
+	got := SelectColumns(headers, "reverse-alias")
+	if len(got) != 1 || got[0] != 0 {
+		t.Errorf("SelectColumns(reverse-alias) = %v, want [0]", got)
+	}
+}
+
+func TestSelectColumns_AllInvalid(t *testing.T) {
+	headers := []string{"ID", "Email"}
+	got := SelectColumns(headers, "bogus,nope")
+	// Should fall back to all columns
+	if len(got) != 2 {
+		t.Errorf("SelectColumns(all invalid) returned %d indices, want 2 (fallback)", len(got))
+	}
+}
+
+func TestFilterRow(t *testing.T) {
+	row := []string{"1", "test@example.com", "enabled", "my note"}
+	got := FilterRow(row, []int{0, 3})
+	if len(got) != 2 || got[0] != "1" || got[1] != "my note" {
+		t.Errorf("FilterRow = %v, want [1, my note]", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Truncate - edge cases
 // ---------------------------------------------------------------------------
 
@@ -316,27 +377,19 @@ func TestTruncate_EdgeCases(t *testing.T) {
 		input  string
 		maxLen int
 		want   string
-		panics bool
 	}{
-		{"maxLen=0", "hello", 0, "", false},
-		{"maxLen=1", "hello", 1, "h", false},
-		{"maxLen=2", "hello", 2, "he", false},
-		{"maxLen=3", "hello", 3, "hel", false},
-		{"maxLen=5_exact_length", "hello", 5, "hello", false},
-		{"maxLen=10_longer_than_string", "hello", 10, "hello", false},
-		{"empty_string_maxLen=5", "", 5, "", false},
+		{"maxLen=0", "hello", 0, ""},
+		{"maxLen=1", "hello", 1, "h"},
+		{"maxLen=2", "hello", 2, "he"},
+		{"maxLen=3", "hello", 3, "hel"},
+		{"maxLen=5_exact_length", "hello", 5, "hello"},
+		{"maxLen=10_longer_than_string", "hello", 10, "hello"},
+		{"empty_string_maxLen=5", "", 5, ""},
+		{"size_hint_fits", "abcdefghijklmnopqrstuvwxyz", 15, "abcdefg... [26]"},
+		{"size_hint_boundary", "abcdefghij", 9, "a... [10]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.panics {
-				// Truncate may currently panic for maxLen < 3 (issue #31).
-				// Guard with recover so the test suite stays green.
-				defer func() {
-					if r := recover(); r != nil {
-						t.Skipf("Truncate(%q, %d) panics (expected until #31 is fixed): %v", tt.input, tt.maxLen, r)
-					}
-				}()
-			}
 			got := Truncate(tt.input, tt.maxLen)
 			if got != tt.want {
 				t.Errorf("Truncate(%q, %d) = %q, want %q", tt.input, tt.maxLen, got, tt.want)

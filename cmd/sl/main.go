@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"runtime/debug"
 	"strings"
 
 	"github.com/mexcool/simplelogin-cli/cmd"
+	"github.com/mexcool/simplelogin-cli/internal/output"
 )
 
 // These variables are set at build time via ldflags.
@@ -53,6 +56,22 @@ func main() {
 			strings.Contains(errMsg, "invalid argument") {
 			exitCode = 2
 		}
+
+		// If the executed command had --json active, emit a structured
+		// JSON error envelope to stdout so agents can parse it.
+		if executed := cmd.ExecutedCmd(); executed != nil {
+			if f := executed.Flags().Lookup("json"); f != nil && f.Value.String() == "true" {
+				envelope, _ := json.Marshal(map[string]interface{}{
+					"error": errMsg,
+					"code":  exitCode,
+				})
+				fmt.Fprintln(os.Stdout, string(envelope))
+				os.Exit(exitCode)
+			}
+		}
+
+		// SilenceErrors is on, so we print the error ourselves.
+		output.PrintError("%s", errMsg)
 		os.Exit(exitCode)
 	}
 }

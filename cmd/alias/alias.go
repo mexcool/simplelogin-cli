@@ -5,6 +5,7 @@ import (
 )
 
 // Cmd is the alias parent command.
+// Running "sl alias" with no subcommand lists aliases (content-first).
 var Cmd = &cobra.Command{
 	Use:   "alias",
 	Short: "Manage email aliases",
@@ -17,6 +18,9 @@ prefix and domain.
 
 Most commands accept either an alias ID (integer) or the full alias
 email address as an identifier.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runList(cmd, args)
+	},
 }
 
 func init() {
