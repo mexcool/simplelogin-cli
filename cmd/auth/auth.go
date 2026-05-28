@@ -14,6 +14,7 @@ The CLI supports three authentication methods:
   1. Environment variables (SIMPLELOGIN_API_KEY or SL_API_KEY)
   2. Direct API key stored in config file
   3. 1Password integration via the op CLI
+  4. Password-store integration via the pass CLI
 
 Use "sl auth login" to configure authentication, "sl auth status" to
 verify your current session, and "sl auth logout" to clear stored credentials.`,

@@ -12,7 +12,7 @@ import (
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Remove stored credentials",
-	Long: `Remove stored API key and 1Password references from the config file.
+	Long: `Remove stored API key, 1Password and password-store references from the config file.
 
 This command clears stored credentials from $XDG_CONFIG_HOME/simplelogin/config.yml (defaults to ~/.config/simplelogin/config.yml).
 It also attempts to invalidate the API session on the server.
