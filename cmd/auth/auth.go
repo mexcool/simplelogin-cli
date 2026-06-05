@@ -10,7 +10,7 @@ var Cmd = &cobra.Command{
 	Short: "Manage authentication",
 	Long: `Manage authentication for the SimpleLogin CLI.
 
-The CLI supports three authentication methods:
+The CLI supports four authentication methods:
   1. Environment variables (SIMPLELOGIN_API_KEY or SL_API_KEY)
   2. Direct API key stored in config file
   3. 1Password integration via the op CLI
