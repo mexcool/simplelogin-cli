@@ -17,7 +17,7 @@ var loginCmd = &cobra.Command{
 	Short: "Authenticate with SimpleLogin",
 	Long: `Store your SimpleLogin API key for CLI access.
 
-There are three ways to authenticate:
+There are four ways to authenticate:
 
 1. Direct API key:
    Provide your API key directly. It will be stored in
@@ -25,10 +25,15 @@ There are three ways to authenticate:
 
 2. 1Password integration:
    Store a reference to your API key in 1Password. The CLI will
-   use the "op" CLI to retrieve the key on each request. This is
-   the most secure option as the key is never stored on disk.
+   use the "op" CLI to retrieve the key on each request. The key
+   is never stored on disk.
 
-3. Interactive:
+3. Password-store integration:
+   Store a reference to your API key in password-store (pass). The CLI
+   will use the "pass" CLI to retrieve the key on each request. The key
+   is never stored on disk.
+
+4. Interactive:
    If no flags are provided, you will be prompted to enter your
    API key interactively.
 
@@ -43,6 +48,9 @@ of your server (e.g. https://sl.example.com).`,
   # Login with 1Password integration
   sl auth login --1password --vault Personal --item "SimpleLogin API Key"
 
+  # Login with password-store integration
+  sl auth login --pass --item "Email/simplelogin"
+
   # Login to a self-hosted instance
   sl auth login --key sl_xxxxxxxxxxxxx --url https://sl.example.com
 
@@ -55,6 +63,7 @@ var (
 	loginKey       string
 	loginURL       string
 	login1Password bool
+	loginPass      bool
 	loginVault     string
 	loginItem      string
 )
@@ -63,8 +72,9 @@ func init() {
 	loginCmd.Flags().StringVar(&loginKey, "key", "", "API key to store (note: value will appear in shell history and ps output; prefer interactive or --1password)")
 	loginCmd.Flags().StringVar(&loginURL, "url", "", "Base URL of a self-hosted SimpleLogin instance (e.g. https://sl.example.com)")
 	loginCmd.Flags().BoolVar(&login1Password, "1password", false, "Use 1Password integration")
+	loginCmd.Flags().BoolVar(&loginPass, "pass", false, "Use password-store integration")
 	loginCmd.Flags().StringVar(&loginVault, "vault", "", "1Password vault name")
-	loginCmd.Flags().StringVar(&loginItem, "item", "", "1Password item name")
+	loginCmd.Flags().StringVar(&loginItem, "item", "", "Credential store item name or path (1Password item name or password-store path)")
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
@@ -73,6 +83,10 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		if err := intauth.SaveAPIBase(loginURL); err != nil {
 			return fmt.Errorf("failed to save API base URL: %w", err)
 		}
+	}
+
+	if login1Password && loginPass {
+		return fmt.Errorf("--1password and --pass are mutually exclusive")
 	}
 
 	if login1Password {
@@ -100,6 +114,40 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		}
 
 		output.PrintSuccess("Authenticated as %s (%s) via 1Password", info.Name, info.Email)
+		if loginURL != "" {
+			output.PrintSuccess("Using custom API URL: %s", intauth.GetAPIBase())
+		}
+		return nil
+	}
+
+	if loginPass {
+		if loginItem == "" {
+			return fmt.Errorf("--item is required with --pass")
+		}
+		if loginVault != "" {
+			return fmt.Errorf("--vault is only valid with --1password, not --pass")
+		}
+
+		if err := intauth.SavePassRef(loginItem); err != nil {
+			return fmt.Errorf("failed to save password-store reference: %w", err)
+		}
+
+		// Validate by trying to get the key and calling the API
+		key, err := intauth.GetAPIKey()
+		if err != nil {
+			output.PrintWarning("password-store reference saved, but could not validate: %v", err)
+			output.PrintWarning("Make sure the 'pass' CLI is installed and the entry exists.")
+			return nil
+		}
+
+		client := api.NewClient(key, intauth.GetAPIBase())
+		info, _, err := client.GetUserInfo()
+		if err != nil {
+			output.PrintWarning("password-store reference saved, but API validation failed: %v", err)
+			return nil
+		}
+
+		output.PrintSuccess("Authenticated as %s (%s) via password-store", info.Name, info.Email)
 		if loginURL != "" {
 			output.PrintSuccess("Using custom API URL: %s", intauth.GetAPIBase())
 		}

@@ -51,6 +51,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 		APIKey:  "test-key-123",
 		APIBase: "https://custom.example.com",
 		OPRef:   "op://vault/item/credential",
+		PassRef: "ps://Email/simplelogin",
 	}
 	if err := saveConfig(cfg); err != nil {
 		t.Fatalf("saveConfig: %v", err)
@@ -77,6 +78,9 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	if loaded.OPRef != cfg.OPRef {
 		t.Errorf("OPRef = %q, want %q", loaded.OPRef, cfg.OPRef)
 	}
+	if loaded.PassRef != cfg.PassRef {
+		t.Errorf("PassRef = %q, want %q", loaded.PassRef, cfg.PassRef)
+	}
 }
 
 func TestLoadConfig_NonExistent(t *testing.T) {
@@ -84,7 +88,7 @@ func TestLoadConfig_NonExistent(t *testing.T) {
 	setConfigDir(t, filepath.Join(dir, "nonexistent"))
 
 	cfg := loadConfig()
-	if cfg.APIKey != "" || cfg.OPRef != "" || cfg.APIBase != "" {
+	if cfg.APIKey != "" || cfg.OPRef != "" || cfg.APIBase != "" || cfg.PassRef != "" {
 		t.Errorf("expected empty Config for missing file, got: %+v", cfg)
 	}
 }
@@ -115,12 +119,12 @@ func TestSaveAPIKey(t *testing.T) {
 	dir := t.TempDir()
 	setConfigDir(t, dir)
 
-	// First set an op_ref
-	if err := saveConfig(Config{OPRef: "op://v/i/c"}); err != nil {
+	// First set both credential store refs
+	if err := saveConfig(Config{OPRef: "op://v/i/c", PassRef: "ps://Email/simplelogin"}); err != nil {
 		t.Fatal(err)
 	}
 
-	// SaveAPIKey should clear op_ref
+	// SaveAPIKey should clear both refs
 	if err := SaveAPIKey("my-new-key"); err != nil {
 		t.Fatalf("SaveAPIKey: %v", err)
 	}
@@ -132,14 +136,17 @@ func TestSaveAPIKey(t *testing.T) {
 	if cfg.OPRef != "" {
 		t.Errorf("OPRef should be cleared after SaveAPIKey, got %q", cfg.OPRef)
 	}
+	if cfg.PassRef != "" {
+		t.Errorf("PassRef should be cleared after SaveAPIKey, got %q", cfg.PassRef)
+	}
 }
 
 func TestSaveOPRef(t *testing.T) {
 	dir := t.TempDir()
 	setConfigDir(t, dir)
 
-	// First set an api key
-	if err := saveConfig(Config{APIKey: "old-key"}); err != nil {
+	// First set an api key and a pass ref
+	if err := saveConfig(Config{APIKey: "old-key", PassRef: "ps://Email/simplelogin"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -155,14 +162,17 @@ func TestSaveOPRef(t *testing.T) {
 	if cfg.APIKey != "" {
 		t.Errorf("APIKey should be cleared after SaveOPRef, got %q", cfg.APIKey)
 	}
+	if cfg.PassRef != "" {
+		t.Errorf("PassRef should be cleared after SaveOPRef, got %q", cfg.PassRef)
+	}
 }
 
 func TestClearConfig(t *testing.T) {
 	dir := t.TempDir()
 	setConfigDir(t, dir)
 
-	// Set up a full config
-	if err := saveConfig(Config{APIKey: "key", OPRef: "ref"}); err != nil {
+	// Set up a full config including all credential sources
+	if err := saveConfig(Config{APIKey: "key", OPRef: "op://v/i/c", PassRef: "ps://Email/simplelogin"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -171,7 +181,7 @@ func TestClearConfig(t *testing.T) {
 	}
 
 	cfg := loadConfig()
-	if cfg.APIKey != "" || cfg.OPRef != "" {
+	if cfg.APIKey != "" || cfg.OPRef != "" || cfg.PassRef != "" {
 		t.Errorf("expected cleared config, got: %+v", cfg)
 	}
 }
@@ -360,6 +370,141 @@ func TestGetOPRef_Empty(t *testing.T) {
 	got := GetOPRef()
 	if got != "" {
 		t.Errorf("GetOPRef() for missing config = %q, want empty", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SavePassRef / GetPassRef
+// ---------------------------------------------------------------------------
+
+func TestSavePassRef(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	// First set an api key and an op_ref
+	if err := saveConfig(Config{APIKey: "old-key", OPRef: "op://v/i/c"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SavePassRef("Email/simplelogin"); err != nil {
+		t.Fatalf("SavePassRef: %v", err)
+	}
+
+	cfg := loadConfig()
+	expectedRef := "ps://Email/simplelogin"
+	if cfg.PassRef != expectedRef {
+		t.Errorf("PassRef = %q, want %q", cfg.PassRef, expectedRef)
+	}
+	if cfg.APIKey != "" {
+		t.Errorf("APIKey should be cleared after SavePassRef, got %q", cfg.APIKey)
+	}
+	if cfg.OPRef != "" {
+		t.Errorf("OPRef should be cleared after SavePassRef, got %q", cfg.OPRef)
+	}
+}
+
+func TestGetPassRef(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	if err := saveConfig(Config{PassRef: "ps://Email/simplelogin"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := GetPassRef()
+	if got != "ps://Email/simplelogin" {
+		t.Errorf("GetPassRef() = %q, want %q", got, "ps://Email/simplelogin")
+	}
+}
+
+func TestGetPassRef_Empty(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, filepath.Join(dir, "empty"))
+
+	got := GetPassRef()
+	if got != "" {
+		t.Errorf("GetPassRef() for missing config = %q, want empty", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetAPIKey — password-store branch
+// ---------------------------------------------------------------------------
+
+func TestGetAPIKey_PasswordStore(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	// Create a stub 'pass' binary that outputs the key on line 1 and metadata on line 2
+	stubDir := t.TempDir()
+	stubScript := filepath.Join(stubDir, "pass")
+	script := "#!/bin/sh\necho 'pass-store-key'\necho 'metadata line'\n"
+	if err := os.WriteFile(stubScript, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if err := SavePassRef("Email/simplelogin"); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("SIMPLELOGIN_API_KEY", "")
+	t.Setenv("SL_API_KEY", "")
+
+	key, err := GetAPIKey()
+	if err != nil {
+		t.Fatalf("GetAPIKey: %v", err)
+	}
+	if key != "pass-store-key" {
+		t.Errorf("expected key from password-store, got %q", key)
+	}
+}
+
+func TestGetAPIKey_PasswordStore_FirstLineOnly(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	// Stub outputs multiple lines; only the first should be used as the key
+	stubDir := t.TempDir()
+	stubScript := filepath.Join(stubDir, "pass")
+	script := "#!/bin/sh\necho 'actual-key'\necho 'URL: https://app.simplelogin.io'\necho 'Username: user@example.com'\n"
+	if err := os.WriteFile(stubScript, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if err := SavePassRef("Email/simplelogin"); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("SIMPLELOGIN_API_KEY", "")
+	t.Setenv("SL_API_KEY", "")
+
+	key, err := GetAPIKey()
+	if err != nil {
+		t.Fatalf("GetAPIKey: %v", err)
+	}
+	if key != "actual-key" {
+		t.Errorf("expected only first line from pass output, got %q", key)
+	}
+}
+
+func TestGetAPIKey_PasswordStore_BinaryNotFound(t *testing.T) {
+	dir := t.TempDir()
+	setConfigDir(t, dir)
+
+	// Set pass_ref but point PATH at an empty dir so 'pass' can't be found
+	if err := saveConfig(Config{PassRef: "ps://Email/simplelogin"}); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("SIMPLELOGIN_API_KEY", "")
+	t.Setenv("SL_API_KEY", "")
+
+	// Should fall through to api_key (empty), so error
+	_, err := GetAPIKey()
+	if err == nil {
+		t.Error("expected error when pass binary not found and no api_key configured")
 	}
 }
 

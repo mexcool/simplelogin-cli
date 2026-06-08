@@ -62,7 +62,7 @@ sl auth login
 # Prompts for your API key
 ```
 
-### 3. 1Password integration (most secure)
+### 3. 1Password integration
 
 If you use 1Password, the CLI can retrieve your API key on each request without ever storing it on disk:
 
@@ -71,6 +71,16 @@ sl auth login --1password --vault Personal --item "SimpleLogin API Key"
 ```
 
 This stores an `op://` reference in the config file. The actual key is fetched via the `op` CLI each time it's needed. You must have the [1Password CLI](https://developer.1password.com/docs/cli/) installed and signed in.
+
+### 4. password-store integration
+
+If you use [password-store](https://www.passwordstore.org/) (`pass`), the CLI can retrieve your API key the same way — without storing it on disk:
+
+```bash
+sl auth login --pass --item "Email/simplelogin"
+```
+
+This stores a `ps://` reference in the config file. The actual key is fetched from the first line of `pass show <path>` each time it's needed. You must have `pass` installed and the entry must exist in your store.
 
 ### Self-hosted instances
 
@@ -138,6 +148,7 @@ Most commands support `--json` and `--jq` flags for machine-readable output. Man
 | `sl auth login --key <key>` | Store API key directly |
 | `sl auth login --key <key> --url <url>` | Authenticate against a self-hosted instance |
 | `sl auth login --1password --vault <v> --item <i>` | Use 1Password integration |
+| `sl auth login --pass --item <path>` | Use password-store integration |
 | `sl auth logout` | Remove stored credentials |
 | `sl auth status` | Show current user, key source, and API URL |
 
@@ -327,6 +338,8 @@ api_key: sl_xxxxxxxxxxxxx
 api_base: https://sl.example.com  # only for self-hosted instances
 # or for 1Password:
 op_ref: op://Personal/SimpleLogin API Key/credential
+# or for password-store:
+pass_ref: ps://Email/simplelogin
 ```
 
 ## Automated Upstream Tracking

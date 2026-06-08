@@ -16,6 +16,7 @@ type Config struct {
 	APIKey  string `yaml:"api_key"`
 	APIBase string `yaml:"api_base"`
 	OPRef   string `yaml:"op_ref"`
+	PassRef string `yaml:"pass_ref"`
 }
 
 var configDir string
@@ -77,7 +78,8 @@ func saveConfig(cfg Config) error {
 // 1. SIMPLELOGIN_API_KEY env var
 // 2. SL_API_KEY env var
 // 3. 1Password via op CLI (if op_ref is set in config)
-// 4. api_key from config file
+// 4. password-store via pass CLI (if pass_ref is set in config)
+// 5. api_key from config file
 func GetAPIKey() (string, error) {
 	// 1. SIMPLELOGIN_API_KEY env var
 	if key := os.Getenv("SIMPLELOGIN_API_KEY"); key != "" {
@@ -106,7 +108,22 @@ func GetAPIKey() (string, error) {
 		}
 	}
 
-	// 4. Config file api_key
+	// 4. password-store via pass CLI — password is on the first line of output
+	if cfg.PassRef != "" {
+		if passPath, err := exec.LookPath("pass"); err == nil && passPath != "" {
+			passArg := strings.TrimPrefix(cfg.PassRef, "ps://")
+			cmd := exec.Command("pass", "show", passArg)
+			out, err := cmd.Output()
+			if err == nil {
+				key := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
+				if key != "" {
+					return key, nil
+				}
+			}
+		}
+	}
+
+	// 5. Config file api_key
 	if cfg.APIKey != "" {
 		return cfg.APIKey, nil
 	}
@@ -118,8 +135,9 @@ func GetAPIKey() (string, error) {
 func SaveAPIKey(key string) error {
 	cfg := loadConfig()
 	cfg.APIKey = key
-	// Remove op_ref if setting direct key
+	// Remove credential store refs if setting direct key
 	cfg.OPRef = ""
+	cfg.PassRef = ""
 	return saveConfig(cfg)
 }
 
@@ -128,12 +146,30 @@ func SaveOPRef(vault, item string) error {
 	ref := fmt.Sprintf("op://%s/%s/credential", vault, item)
 	cfg := loadConfig()
 	cfg.OPRef = ref
-	// Remove direct api_key if setting 1Password ref
+	// Remove other credential sources when setting 1Password ref
 	cfg.APIKey = ""
+	cfg.PassRef = ""
 	return saveConfig(cfg)
 }
 
-// ClearConfig removes the API key and op_ref from the config file.
+// SavePassRef stores the password-store path in the config file.
+func SavePassRef(path string) error {
+	ref := "ps://" + path
+	cfg := loadConfig()
+	cfg.PassRef = ref
+	// Remove other credential sources when setting password-store ref
+	cfg.APIKey = ""
+	cfg.OPRef = ""
+	return saveConfig(cfg)
+}
+
+// GetPassRef returns the stored password-store path, if any.
+func GetPassRef() string {
+	cfg := loadConfig()
+	return cfg.PassRef
+}
+
+// ClearConfig removes all stored credentials from the config file.
 func ClearConfig() error {
 	if _, err := os.Stat(ConfigPath()); os.IsNotExist(err) {
 		return nil
@@ -141,6 +177,7 @@ func ClearConfig() error {
 	cfg := loadConfig()
 	cfg.APIKey = ""
 	cfg.OPRef = ""
+	cfg.PassRef = ""
 	return saveConfig(cfg)
 }
 

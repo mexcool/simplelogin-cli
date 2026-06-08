@@ -18,7 +18,7 @@ var statusCmd = &cobra.Command{
 user's name and email, and the source of the API key.
 
 This is useful to verify which account is active and how the CLI is
-obtaining the API key (environment variable, 1Password, or config file).`,
+obtaining the API key (environment variable, 1Password, password-store, or config file).`,
 	Example: `  # Check authentication status
   sl auth status
 
@@ -54,6 +54,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		source = "SL_API_KEY env var"
 	} else if intauth.GetOPRef() != "" {
 		source = "1Password (" + intauth.GetOPRef() + ")"
+	} else if intauth.GetPassRef() != "" {
+		source = "password-store (" + intauth.GetPassRef() + ")"
 	}
 
 	client := api.NewClient(key, intauth.GetAPIBase())
